@@ -14,11 +14,8 @@ logging.basicConfig(level=logging.DEBUG)
 torch.autograd.set_detect_anomaly(True)
 gc.collect()
 
-assert sys.version_info >= (3, 6),\
-    "This script requires Python >= 3.6"  # TODO 3.7?
-# assert tuple(int(ver_num) for ver_num in torch.__version__.split('.')) >= (0, 4, 0),\
-#     "This script requires PyTorch >= 0.4.0"  # TODO 0.4.1?
-
+# assert sys.version_info >= (3, 6),\
+#     "This script requires Python >= 3.6"  # TODO 3.7?
 
 def str_to_bmi_group(s):
     s = str(s).lower()
