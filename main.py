@@ -93,12 +93,12 @@ if __name__ == '__main__':
 
     if args.execution_mode == 'cuda' and torch.cuda.is_available():
         net.cuda()
-        print("cuda selected")
+        logging.info("cuda selected")
     elif args.execution_mode == 'mps':
         net.mps()
-        print("mps selected")
+        logging.info("mps selected")
     else:
-        print("cpu selected")
+        logging.info("cpu selected")
         net.cpu()
 
     if args.mode == 'train':
@@ -108,7 +108,7 @@ if __name__ == '__main__':
 
         if args.load is not None:
             net.load(args.load)
-            print("Loading pre-trained models from {}".format(args.load))
+            logging.info("Loading pre-trained models from {}".format(args.load))
 
         data_src = args.input or consts.DEFAULT_DATA_PATH
         logging.info("Data folder is {}".format(data_src))

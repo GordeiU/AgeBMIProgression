@@ -85,7 +85,7 @@ def sort_to_classes(root, print_cycle=np.inf):
         if copied_count % print_cycle == 0:
             pbar.write(f'Copied {copied_count} files')
 
-    logging.info('Finished labeling process.')
+    logging.info('Finished labeling')
 
 
 def get_fgnet_person_loader(root):
@@ -143,19 +143,17 @@ def default_test_results_dir(eval=True):
     return os.path.join('.', 'test_results', datetime.datetime.now().strftime(fmt) if eval else fmt)
 
 
-def print_timestamp(s):
-    print("[{}] {}".format(datetime.datetime.now().strftime(fmt_t.replace('_', ':')), s))
+def timestamp(s):
+    return f"[{datetime.datetime.now().strftime(fmt_t.replace('_', ':'))}] {s}"
 
 
 class LossTracker(object):
     def __init__(self, use_heuristics=False, plot=False, eps=1e-3):
-        # assert 'train' in names and 'valid' in names, str(names)
         self.losses = defaultdict(lambda: [])
         self.paths = []
         self.epochs = 0
         self.use_heuristics = use_heuristics
         if plot:
-           # print("names[-1] - "+names[-1])
             plt.ion()
             plt.show()
         else:
@@ -199,7 +197,7 @@ class LossTracker(object):
         self.append_many(**names)
 
     def plot(self):
-        print("in plot")
+        logging.debug("Inside plot")
         plt.clf()
         graphs = [plt.plot(loss, label=name)[0] for name, loss in self.losses.items()]
         plt.legend(handles=graphs)
@@ -212,7 +210,7 @@ class LossTracker(object):
 
     @staticmethod
     def show():
-        print("in show")
+        logging.debug("Inside show")
         plt.show()
 
     @staticmethod
@@ -286,9 +284,9 @@ def remove_trained(folder):
                     os.remove(tm)
                     removed_ctr += 1
                 except OSError as e:
-                    print("Failed removing {}: {}".format(tm, e))
+                    logging.info(f"Failed removing {tm}: {e}")
         if removed_ctr > 0:
-            print("Removed {} trained models from {}".format(removed_ctr, folder))
+            logging.info(f"Removed {removed_ctr} trained models from {folder}")
 
 
 def merge_images(batch1, batch2):

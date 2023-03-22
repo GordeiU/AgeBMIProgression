@@ -129,8 +129,7 @@ class DiscriminatorImg(nn.Module):
 
         # run convs
         for i, conv_layer in enumerate(self.conv_layers, 1):
-            # print(out.shape)
-            # print(conv_layer)
+            logging.debug(f"DiscriminatorImg {conv_layer} out shape: {out.shape}")
             out = conv_layer(out)
             if i == 1:
                 # concat labels after first conv
@@ -143,8 +142,7 @@ class DiscriminatorImg(nn.Module):
         # run fcs
         out = out.flatten(1, -1)
         for fc_layer in self.fc_layers:
-            # print(out.shape)
-            # print(fc_layer)
+            logging.debug(f"DiscriminatorImg {fc_layer} out shape: {out.shape}")
 
             out = fc_layer(out)
 
@@ -249,7 +247,7 @@ class Net(object):
         generated = self.G(z_vectors)
         dest = os.path.join(target, 'morph.png')
         save_image_normalized(tensor=generated, filename=dest, nrow=generated.size(0))
-        print_timestamp("Saved test result to " + dest)
+        logging.log(timestamp(f"Saved test result to {dest}"))
         return dest
 
     def kids(self, image_tensors, length, target):
@@ -277,7 +275,7 @@ class Net(object):
         generated = self.G(z_l_vectors)
         dest = os.path.join(target, 'kids.png')
         save_image_normalized(tensor=generated, filename=dest, nrow=generated.size(0))
-        print_timestamp("Saved test result to " + dest)
+        logging.info(timestamp(f"Saved test result to {dest}"))
         return dest
 
 
@@ -332,7 +330,7 @@ class Net(object):
 
         dest = os.path.join(target, 'menifa.png')
         save_image_normalized(tensor=joined, filename=dest, nrow=joined.size(0))
-        print_timestamp("Saved test result to " + dest)
+        logging.log(timestamp(f"Saved test result to {dest}"))
         return dest
 
     def teach(
@@ -460,7 +458,7 @@ class Net(object):
                     now = datetime.datetime.now()
 
                 logging.info('[{h}:{m}[Epoch {e}] Loss: {t}'.format(h=now.hour, m=now.minute, e=epoch, t=loss.item()))
-                print_timestamp(f"[Epoch {epoch:d}] Loss: {loss.item():f}")
+                logging.info(timestamp(f"[Epoch {epoch:d}] Loss: {loss.item():f}"))
                 to_save_models = models_saving in ('always', 'tail')
                 cp_path = self.save(where_to_save_epoch, to_save_models=to_save_models)
                 if models_saving == 'tail':
@@ -498,7 +496,7 @@ class Net(object):
                 logging.info('[{h}:{m}[Epoch {e}] Loss: {l}'.format(h=now.hour, m=now.minute, e=epoch, l=repr(loss_tracker)))
 
             except KeyboardInterrupt:
-                print_timestamp("{br}CTRL+C detected, saving model{br}".format(br=os.linesep))
+                logging.log(timestamp("{br}CTRL+C detected, saving model{br}".format(br=os.linesep)))
                 if models_saving != 'never':
                     cp_path = self.save(where_to_save_epoch, to_save_models=True)
                 if models_saving == 'tail':
@@ -576,7 +574,7 @@ class Net(object):
                         saved.append(class_attr_name)
 
         if saved:
-            print_timestamp("Saved {} to {}".format(', '.join(saved), path))
+            logging.info(timestamp(f"Saved {', '.join(saved)} to {path}"))
         elif to_save_models:
             raise FileNotFoundError("Nothing was saved to {}".format(path))
         return path
@@ -595,7 +593,7 @@ class Net(object):
                     class_attr.load_state_dict(torch.load(fname)())
                     loaded.append(class_attr_name)
         if loaded:
-            print_timestamp("Loaded {} from {}".format(', '.join(loaded), path))
+            logging.log(timestamp(f"Loaded {', '.join(loaded)} from {path}"))
         else:
             raise FileNotFoundError("Nothing was loaded from {}".format(path))
 
