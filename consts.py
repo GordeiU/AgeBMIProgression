@@ -21,7 +21,7 @@ HEALTHY = 0
 OVERWEIGHT = 1
 OBESE = 2
 
-DEFAULT_DATA_PATH = '../Data/ThesisDatasetExploration/data'
+DEFAULT_DATA_PATH = 'data'
 ORIGINAL_IMAGE_FORMAT = re.compile('^([A-Z]\d+)_(\d+)_(\d+)\.jpg$')
 
 TRAINED_MODEL_EXT = '.dat'
