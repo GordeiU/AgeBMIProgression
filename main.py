@@ -10,7 +10,6 @@ from torchvision.datasets.folder import pil_loader
 import gc
 import torch
 
-logging.basicConfig(level=logging.DEBUG)
 torch.autograd.set_detect_anomaly(True)
 gc.collect()
 
@@ -80,11 +79,17 @@ if __name__ == '__main__':
     parser.add_argument('--load', '-l', required=False, default=None, help='Trained models path for pre-training or for testing')
     parser.add_argument('--input', '-i', default=None, help='Training dataset path (default is {}) or testing image path'.format(default_train_results_dir()))
     parser.add_argument('--output', '-o', default='')
+    parser.add_argument('--debug', action='store_true')
+    parser.add_argument('--no-debug', dest='debug', action='store_false')
+    parser.set_defaults(debug=True)
     parser.add_argument('-z', dest='z_channels', default=50, type=int, help='Length of Z vector')
     args = parser.parse_args()
 
     consts.NUM_Z_CHANNELS = args.z_channels
     net = model.Net()
+
+    if args.debug:
+        logging.basicConfig(level=logging.DEBUG)
 
     if args.execution_mode == 'cuda' and torch.cuda.is_available():
         net.cuda()
