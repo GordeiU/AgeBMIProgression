@@ -13,7 +13,7 @@ The project is the part of the final-year honors project
        ...
 ```
 
-2. Create conda environment from the `environment_droplet.yml` file by running `conda <NAME_OF_ENVIRONMENt> create -f environment.yml`
+2. Create conda environment from the `environment_droplet.yml` file by running `conda create <NAME_OF_ENVIRONMENt> -f environment.yml`
 3. Run `python main.py --mode train --execution cpu --debug` change the `--execution cuda` if you have a cuda enabled GPUs and use. The first time you run it the it will create `labeled` folder under the data with the subfolder of labels
 
 Note: the full command is:
