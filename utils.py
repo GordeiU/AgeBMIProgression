@@ -104,7 +104,7 @@ class Label(namedtuple('Label', ('age', 'bmi_group'))):
         return '%d.%d' % (self.age_group, self.bmi_group)
 
     @staticmethod
-    def age_transform(age):
+    def age_transform(age): #TODO: Modify to fit my needs
         age -= 1
         if age < 20:
             # first 4 age groups are for kids <= 20, 5 years intervals
