@@ -1,6 +1,7 @@
 # Repo specific
 trained_models/
 data/
+checkpoints/
 
 # macOS
 .DS_Store
