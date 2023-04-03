@@ -33,14 +33,15 @@ def str_to_bmi_group(s):
         raise KeyError("No bmi_group found")
 
 
-def str_to_bool(s):
-    s = s.lower()
-    if s in ('true', 't', 'yes', 'y', '1'):
-        return True
-    elif s in ('false', 'f', 'no', 'n', 'o'):
-        return False
-    else:
-        raise KeyError("Invalid boolean")
+# TODO: Remove?
+# def str_to_bool(s):
+#     s = s.lower()
+#     if s in ('true', 't', 'yes', 'y', '1'):
+#         return True
+#     elif s in ('false', 'f', 'no', 'n', 'o'):
+#         return False
+#     else:
+#         raise KeyError("Invalid boolean")
 
 
 if __name__ == '__main__':
