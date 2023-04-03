@@ -19,7 +19,7 @@ pip install -r requirements.txt
 # Training
 
 ```shell
-python mainCAAEsplit_ver2_lime.py --mode train --epochs NUMBER --input data/CACD_UTKFace --output checkpoints
+python mainCAAEsplit_ver2_lime.py --mode train --epochs NUMBER --output checkpoints
 ```
 
 # Run Book

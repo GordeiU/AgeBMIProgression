@@ -540,7 +540,7 @@ class Net(object):
 
     def teachSplit(
             self,
-            utkface_path,
+            dataset_path,
             batch_size=64,
             epochs=1,
             weight_decay=1e-5,
@@ -559,8 +559,8 @@ class Net(object):
         where_to_save = where_to_save or default_where_to_save()
         logging.info(f"Model saving path: {where_to_save}")
 
-        logging.debug(f"Loading dataset from {utkface_path}...")
-        dataset = get_utkface_dataset(utkface_path)
+        logging.debug(f"Loading dataset from {dataset_path}...")
+        dataset = get_dataset(dataset_path)
         valid_size = valid_size or batch_size
         valid_dataset, train_dataset = torch.utils.data.random_split(dataset, (valid_size, len(dataset) - valid_size))
 
@@ -704,7 +704,7 @@ class Net(object):
 
     def teach(
             self,
-            utkface_path,
+            dataset_path,
             batch_size=64,
             epochs=1,
             weight_decay=1e-5,
@@ -721,7 +721,7 @@ class Net(object):
             explanationSwitch = (epochs + 1) / 2 if epochs % 2 == 1 else epochs / 2
 
         where_to_save = where_to_save or default_where_to_save()
-        dataset = get_utkface_dataset(utkface_path)
+        dataset = get_dataset(dataset_path)
         valid_size = valid_size or batch_size
         valid_dataset, train_dataset = torch.utils.data.random_split(dataset, (valid_size, len(dataset) - valid_size))
 

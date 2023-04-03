@@ -1,3 +1,4 @@
+from tqdm import tqdm
 import os
 import datetime
 from shutil import copyfile
@@ -37,49 +38,49 @@ pil_to_model_tensor_transform = transforms.Compose(
 )
 
 
-def get_utkface_dataset(root):
-    logging.info(f"Getting utkface dataset from: {root}")
+def get_dataset(root):
+    logging.info(f"Getting dataset from: {root}")
     ret = lambda: ImageFolder(os.path.join(root, 'labeled'), transform=pil_to_model_tensor_transform)
     try:
         return ret()
     except (RuntimeError, FileNotFoundError):
-        sort_to_classes(os.path.join(root, 'unlabeled'), print_cycle=1000)
+        sort_to_classes(os.path.join(root, 'unlabeled'))
         return ret()
 
-def sort_to_classes(root, print_cycle=np.inf):
-    # Example UTKFace cropped and aligned image file format: [age]_[gender]_[race]_[date&time].jpg.chip.jpg
-    # Should be 23613 images, use print_cycle >= 1000
-    # Make sure you have > 100 MB free space
-
+def sort_to_classes(root):
     def log(text):
-        logging.debug('[UTKFace dset labeler] ' + text)
+        logging.info(f"[Labeling process] {text}")
 
     log('Starting labeling process...')
     files = [f for f in os.listdir(root) if os.path.isfile(os.path.join(root, f))]
+
     if not files:
-        raise FileNotFoundError('No image files in '+root)
+        raise FileNotFoundError(f"No image files in {root}")
+
     copied_count = 0
     sorted_folder = os.path.join(root, '..', 'labeled')
+
     if not os.path.isdir(sorted_folder):
         os.mkdir(sorted_folder)
 
-    for f in files:
+    for f in tqdm(files):
         matcher = consts.ORIGINAL_IMAGE_FORMAT.match(f)
         if matcher is None:
             continue
-        age, gender, dtime = matcher.groups()
+
+        id, age, bmi = matcher.groups()
+
         srcfile = os.path.join(root, f)
-        label = Label(int(age), int(gender))
+        label = Label(int(age), int(bmi))
         dstfolder = os.path.join(sorted_folder, label.to_str())
-        dstfile = os.path.join(dstfolder, dtime+'.jpg')
+        dstfile = os.path.join(dstfolder, id+'.jpg')
         if os.path.isfile(dstfile):
             continue
         if not os.path.isdir(dstfolder):
             os.mkdir(dstfolder)
         copyfile(srcfile, dstfile)
         copied_count += 1
-        if copied_count % print_cycle == 0:
-            log('Copied %d files' % copied_count)
+
     log('Finished labeling process')
 
 def str_to_tensor(text, normalize=False):

@@ -124,7 +124,7 @@ if __name__ == '__main__':
         logging.basicConfig(filename=log_path, level=logging.DEBUG)
 
         net.teachSplit(
-            utkface_path=data_src,
+            dataset_path=data_src,
             batch_size=args.batch_size,
             betas=betas,
             epochs=args.epochs,
