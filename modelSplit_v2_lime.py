@@ -349,9 +349,9 @@ class Net(object):
         batch = image_tensor.repeat(consts.NUM_AGES, 1, 1, 1).to(device=self.device)  # N x D x H x W
         z = self.E(batch)  # N x Z
 
-        gender_tensor = -torch.ones(consts.NUM_GENDERS)
+        gender_tensor = -torch.ones(consts.NUM_BMI_GROUPS)
         gender_tensor[int(gender)] *= -1
-        gender_tensor = gender_tensor.repeat(consts.NUM_AGES, consts.NUM_AGES // consts.NUM_GENDERS)  # apply gender on all images
+        gender_tensor = gender_tensor.repeat(consts.NUM_AGES, consts.NUM_AGES // consts.NUM_BMI_GROUPS)  # apply gender on all images
 
         age_tensor = -torch.ones(consts.NUM_AGES, consts.NUM_AGES)
         for i in range(consts.NUM_AGES):
@@ -402,9 +402,9 @@ class Net(object):
         batch = image_tensor.repeat(consts.NUM_AGES, 1, 1, 1).to(device=self.device)  # N x D x H x W
         z = self.E(batch)  # N x Z
 
-        gender_tensor = -torch.ones(consts.NUM_GENDERS)
+        gender_tensor = -torch.ones(consts.NUM_BMI_GROUPS)
         gender_tensor[int(gender)] *= -1
-        gender_tensor = gender_tensor.repeat(consts.NUM_AGES, consts.NUM_AGES // consts.NUM_GENDERS)  # apply gender on all images
+        gender_tensor = gender_tensor.repeat(consts.NUM_AGES, consts.NUM_AGES // consts.NUM_BMI_GROUPS)  # apply gender on all images
 
         age_tensor = -torch.ones(consts.NUM_AGES, consts.NUM_AGES)
         for i in range(consts.NUM_AGES):

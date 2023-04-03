@@ -21,7 +21,6 @@ assert sys.version_info >= (3, 6),\
 assert tuple(int(ver_num) for ver_num in torch.__version__.split('.')) >= (0, 4, 0),\
     "This script requires PyTorch >= 0.4.0"  # TODO 0.4.1?
 
-
 def str_to_gender(s):
     s = str(s).lower()
     if s in ('m', 'man', '0'):
@@ -96,6 +95,7 @@ if __name__ == '__main__':
         logging.basicConfig(level=logging.DEBUG)
 
     if not args.cpu and torch.cuda.is_available():
+        logging.info("CUDA initiated")
         net.cuda()
 
     if args.mode == 'train':
