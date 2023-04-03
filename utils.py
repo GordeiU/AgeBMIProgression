@@ -136,7 +136,7 @@ def default_test_results_dir(eval=True):
 
 
 def print_timestamp(s):
-    logging.debug(f"[{datetime.datetime.now().strftime(fmt_t.replace('_', ':'))}] {x}")
+    logging.debug(f"[{datetime.datetime.now().strftime(fmt_t.replace('_', ':'))}] {s}")
 
 class LossTracker(object):
     def __init__(self, use_heuristics=False, plot=False, eps=1e-3):
