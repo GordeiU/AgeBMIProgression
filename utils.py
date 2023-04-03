@@ -84,24 +84,24 @@ def sort_to_classes(root):
     log('Finished labeling process')
 
 def str_to_tensor(text, normalize=False):
-    age_group, gender = text.split('.')
+    age_group, bmi_group = text.split('.')
     age_tensor = -torch.ones(consts.NUM_AGES)
     age_tensor[int(age_group)] *= -1
-    gender_tensor = -torch.ones(consts.NUM_BMI_GROUPS)
-    gender_tensor[int(gender)] *= -1
+    bmi_group_tensor = -torch.ones(consts.NUM_BMI_GROUPS)
+    bmi_group_tensor[int(bmi_group)] *= -1
     if normalize:
-        gender_tensor = gender_tensor.repeat(consts.NUM_AGES // consts.NUM_BMI_GROUPS)
-    result = torch.cat((age_tensor, gender_tensor), 0)
+        bmi_group_tensor = bmi_group_tensor.repeat(consts.NUM_AGES // consts.NUM_BMI_GROUPS)
+    result = torch.cat((age_tensor, bmi_group_tensor), 0)
     return result
 
 
-class Label(namedtuple('Label', ('age', 'gender'))):
-    def __init__(self, age, gender):
+class Label(namedtuple('Label', ('age', 'bmi_group'))):
+    def __init__(self, age, bmi_group):
         super(Label, self).__init__()
         self.age_group = self.age_transform(self.age)
 
     def to_str(self):
-        return '%d.%d' % (self.age_group, self.gender)
+        return '%d.%d' % (self.age_group, self.bmi_group)
 
     @staticmethod
     def age_transform(age):

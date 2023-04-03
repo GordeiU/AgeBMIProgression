@@ -21,14 +21,16 @@ assert sys.version_info >= (3, 6),\
 assert tuple(int(ver_num) for ver_num in torch.__version__.split('.')) >= (0, 4, 0),\
     "This script requires PyTorch >= 0.4.0"  # TODO 0.4.1?
 
-def str_to_gender(s):
+def str_to_bmi_group(s):
     s = str(s).lower()
-    if s in ('m', 'man', '0'):
+    if s in ('healthy', '0'):
         return 0
-    elif s in ('f', 'female', '1'):
+    elif s in ('overweight', '1'):
         return 1
+    elif s in ('obese', '2'):
+        return 2
     else:
-        raise KeyError("No gender found")
+        raise KeyError("No bmi_group found")
 
 
 def str_to_bool(s):
@@ -74,7 +76,7 @@ if __name__ == '__main__':
 
     # test params
     parser.add_argument('--age', '-a', required=False, type=int)
-    parser.add_argument('--gender', '-g', required=False, type=str_to_gender)
+    parser.add_argument('--bmi_group', '-g', required=False, type=str_to_bmi_group)
     parser.add_argument('--watermark', '-w', action='store_true')
 
     # shared params
@@ -144,17 +146,17 @@ if __name__ == '__main__':
         net.load(path=args.load, slim=True)
 
         results_dest = args.output or default_test_results_dir()
-        results_dest = os.path.join(results_dest, str(args.age) + '.' + str(args.gender))
+        results_dest = os.path.join(results_dest, str(args.age) + '.' + str(args.bmi_group))
         if not os.path.isdir(results_dest):
             os.makedirs(results_dest)
 
-        args.input = os.path.join(args.input, str(args.age) + '.' + str(args.gender))
+        args.input = os.path.join(args.input, str(args.age) + '.' + str(args.bmi_group))
 
         for x in range(0, consts.NUM_AGES):
-            if not os.path.exists(os.path.join(results_dest, str(args.age) + '.' + str(args.gender) + '_to_' + str(x) + '.' + str(args.gender))):
-                os.makedirs(os.path.join(results_dest, str(args.age) + '.' + str(args.gender) + '_to_' + str(x) + '.' + str(args.gender)))
-        if not os.path.exists(os.path.join(results_dest, str(args.age) + '.' + str(args.gender) + '_to_all')):
-            os.makedirs(os.path.join(results_dest,str(args.age) + '.' + str(args.gender) + '_to_all'))
+            if not os.path.exists(os.path.join(results_dest, str(args.age) + '.' + str(args.bmi_group) + '_to_' + str(x) + '.' + str(args.bmi_group))):
+                os.makedirs(os.path.join(results_dest, str(args.age) + '.' + str(args.bmi_group) + '_to_' + str(x) + '.' + str(args.bmi_group)))
+        if not os.path.exists(os.path.join(results_dest, str(args.age) + '.' + str(args.bmi_group) + '_to_all')):
+            os.makedirs(os.path.join(results_dest,str(args.age) + '.' + str(args.bmi_group) + '_to_all'))
 
         images = os.listdir(args.input)
         for image_name in images:
@@ -163,7 +165,7 @@ if __name__ == '__main__':
                 image_tensor=image_tensor,
                 image_name=image_name,
                 age=args.age,
-                gender=args.gender,
+                bmi_group=args.bmi_group,
                 target=results_dest,
                 watermark=args.watermark
             )

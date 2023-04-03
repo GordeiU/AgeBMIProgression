@@ -258,12 +258,12 @@ class Generator(nn.Module):
     def _decompress(self, x):
         return x.view(x.size(0), 1024, 4, 4)  # TODO - replace hardcoded
 
-    def forward(self, z, age=None, gender=None):
+    def forward(self, z, age=None, bmi_group=None):
         out = z
-        if age is not None and gender is not None:
-            label = Label(age, gender).to_tensor() \
-                if (isinstance(age, int) and isinstance(gender, int)) \
-                else torch.cat((age, gender), 1)
+        if age is not None and bmi_group is not None:
+            label = Label(age, bmi_group).to_tensor() \
+                if (isinstance(age, int) and isinstance(bmi_group, int)) \
+                else torch.cat((age, bmi_group), 1)
             out = torch.cat((out, label), 1)  # z_l
         out = self.fc(out)
         out = self._decompress(out)
@@ -293,14 +293,14 @@ class Net(object):
     def __repr__(self):
         return os.linesep.join([repr(subnet) for subnet in (self.E, self.Dz, self.G)])
 
-    def morph(self, image_tensors, ages, genders, length, target):
+    def morph(self, image_tensors, ages, bmi_groups, length, target):
 
         self.eval()
 
         original_vectors = [None, None]
         for i in range(2):
             z = self.E(image_tensors[i].unsqueeze(0))
-            l = Label(ages[i], genders[i]).to_tensor(normalize=True).unsqueeze(0).to(device=z.device)
+            l = Label(ages[i], bmi_groups[i]).to_tensor(normalize=True).unsqueeze(0).to(device=z.device)
             z_l = torch.cat((z, l), 1)
             original_vectors[i] = z_l
 
@@ -331,8 +331,8 @@ class Net(object):
                 z_vectors[i][j] = original_vectors[0][j].mul(r) + original_vectors[1][j].mul(1 - r)
 
             fake_age = 0
-            fake_gender = random.choice([consts.HEALTHY, consts.OVERWEIGHT, consts.OBESE])
-            l = Label(fake_age, fake_gender).to_tensor(normalize=True).to(device=z.device)
+            fake_bmi_group = random.choice([consts.HEALTHY, consts.OVERWEIGHT, consts.OBESE])
+            l = Label(fake_age, fake_bmi_group).to_tensor(normalize=True).to(device=z.device)
             z_l = torch.cat((z_vectors[i], l), 0)
             z_l_vectors[i, :] = z_l
 
@@ -343,21 +343,21 @@ class Net(object):
         return dest
 
 
-    def test_single(self, image_tensor, age, gender, target, watermark):
+    def test_single(self, image_tensor, age, bmi_group, target, watermark):
 
         self.eval()
         batch = image_tensor.repeat(consts.NUM_AGES, 1, 1, 1).to(device=self.device)  # N x D x H x W
         z = self.E(batch)  # N x Z
 
-        gender_tensor = -torch.ones(consts.NUM_BMI_GROUPS)
-        gender_tensor[int(gender)] *= -1
-        gender_tensor = gender_tensor.repeat(consts.NUM_AGES, consts.NUM_AGES // consts.NUM_BMI_GROUPS)  # apply gender on all images
+        bmi_group_tensor = -torch.ones(consts.NUM_BMI_GROUPS)
+        bmi_group_tensor[int(bmi_group)] *= -1
+        bmi_group_tensor = bmi_group_tensor.repeat(consts.NUM_AGES, consts.NUM_AGES // consts.NUM_BMI_GROUPS)  # apply bmi_group on all images
 
         age_tensor = -torch.ones(consts.NUM_AGES, consts.NUM_AGES)
         for i in range(consts.NUM_AGES):
             age_tensor[i][i] *= -1  # apply the i'th age group on the i'th image
 
-        l = torch.cat((age_tensor, gender_tensor), 1).to(self.device)
+        l = torch.cat((age_tensor, bmi_group_tensor), 1).to(self.device)
         z_l = torch.cat((z, l), 1)
 
         generated = self.G(z_l)
@@ -373,7 +373,7 @@ class Net(object):
             lineType = 2
             cv2.putText(
                 image_tensor,
-                '{}, {}, {}'.format(["Healthy", "Overweight", "Obese"][gender], age),
+                '{}, {}, {}'.format(["Healthy", "Overweight", "Obese"][bmi_group], age),
                 bottomLeftCornerOfText,
                 font,
                 fontScale,
@@ -397,27 +397,27 @@ class Net(object):
         print_timestamp("Saved test result to " + dest)
         return dest
 
-    def my_test_single(self, image_tensor, image_name, age, gender, target, watermark):
+    def my_test_single(self, image_tensor, image_name, age, bmi_group, target, watermark):
         self.eval()
         batch = image_tensor.repeat(consts.NUM_AGES, 1, 1, 1).to(device=self.device)  # N x D x H x W
         z = self.E(batch)  # N x Z
 
-        gender_tensor = -torch.ones(consts.NUM_BMI_GROUPS)
-        gender_tensor[int(gender)] *= -1
-        gender_tensor = gender_tensor.repeat(consts.NUM_AGES, consts.NUM_AGES // consts.NUM_BMI_GROUPS)  # apply gender on all images
+        bmi_group_tensor = -torch.ones(consts.NUM_BMI_GROUPS)
+        bmi_group_tensor[int(bmi_group)] *= -1
+        bmi_group_tensor = bmi_group_tensor.repeat(consts.NUM_AGES, consts.NUM_AGES // consts.NUM_BMI_GROUPS)  # apply bmi_group on all images
 
         age_tensor = -torch.ones(consts.NUM_AGES, consts.NUM_AGES)
         for i in range(consts.NUM_AGES):
             age_tensor[i][i] *= -1  # apply the i'th age group on the i'th image
 
-        l = torch.cat((age_tensor, gender_tensor), 1).to(self.device)
+        l = torch.cat((age_tensor, bmi_group_tensor), 1).to(self.device)
         z_l = torch.cat((z, l), 1)
 
         generated = self.G(z_l)
         for i in range(0, generated.size(0)):
             save_image_normalized(tensor=generated[i],
-                                  filename=os.path.join(target, str(age) + '.' + str(gender) + '_to_' + str(i) + '.'
-                                                        + str(gender), image_name),
+                                  filename=os.path.join(target, str(age) + '.' + str(bmi_group) + '_to_' + str(i) + '.'
+                                                        + str(bmi_group), image_name),
                                   nrow=1)
 
 
@@ -432,7 +432,7 @@ class Net(object):
             lineType = 2
             cv2.putText(
                 image_tensor,
-                '{}, {}'.format(["Male", "Female"][gender], age),
+                '{}, {}'.format(["Male", "Female"][bmi_group], age),
                 bottomLeftCornerOfText,
                 font,
                 fontScale,
@@ -451,7 +451,7 @@ class Net(object):
                 joined[img_idx, :, :, elem_idx] = 1  # color border white
 
 
-        dest = os.path.join(target, str(age) + '.' + str(gender) + '_to_all', image_name)
+        dest = os.path.join(target, str(age) + '.' + str(bmi_group) + '_to_all', image_name)
         save_image_normalized(tensor=joined, filename=dest, nrow=joined.size(0))
         print_timestamp("Saved test result to " + dest)
         return dest
