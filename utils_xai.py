@@ -15,7 +15,7 @@ from torch.autograd.variable import Variable
 from torch import Tensor, from_numpy, randn, full
 
 import torch.nn as nn
-import modelSplit_v2_lime
+import model
 
 
 def get_explanation_dimg(generated_data, discriminator, prediction, XAItype="shap", cuda=True, trained_data=None, labels=None, device=None, data_type="mnist") -> None:
@@ -59,7 +59,7 @@ def get_explanation_dimg(generated_data, discriminator, prediction, XAItype="sha
             discriminatorLimeInit.eval()
 
             global discriminatorLime
-            discriminatorLime = modelSplit_v2_lime.DimgWrapperModel(discriminatorLimeInit.xai_forward_lime(discriminatorLimeInit.forward))
+            discriminatorLime = model.DimgWrapperModel(discriminatorLimeInit.xai_forward_lime(discriminatorLimeInit.forward))
             discriminatorLime.cpu()
             discriminatorLime.eval()
 

@@ -1,4 +1,4 @@
-import modelSplit_v2_lime
+import model
 import consts
 
 import logging
@@ -91,7 +91,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     consts.NUM_Z_CHANNELS = args.z_channels
-    net = modelSplit_v2_lime.Net()
+    net = model.Net()
 
     if args.debug:
         logging.basicConfig(level=logging.DEBUG)
