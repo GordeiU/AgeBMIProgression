@@ -331,7 +331,7 @@ class Net(object):
                 z_vectors[i][j] = original_vectors[0][j].mul(r) + original_vectors[1][j].mul(1 - r)
 
             fake_age = 0
-            fake_gender = random.choice([consts.MALE, consts.FEMALE])
+            fake_gender = random.choice([consts.HEALTHY, consts.OVERWEIGHT, consts.OBESE])
             l = Label(fake_age, fake_gender).to_tensor(normalize=True).to(device=z.device)
             z_l = torch.cat((z_vectors[i], l), 0)
             z_l_vectors[i, :] = z_l
@@ -373,7 +373,7 @@ class Net(object):
             lineType = 2
             cv2.putText(
                 image_tensor,
-                '{}, {}'.format(["Male", "Female"][gender], age),
+                '{}, {}, {}'.format(["Healthy", "Overweight", "Obese"][gender], age),
                 bottomLeftCornerOfText,
                 font,
                 fontScale,

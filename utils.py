@@ -64,7 +64,7 @@ def sort_to_classes(root, print_cycle=np.inf):
         os.mkdir(sorted_folder)
 
     for f in files:
-        matcher = consts.UTKFACE_ORIGINAL_IMAGE_FORMAT.match(f)
+        matcher = consts.ORIGINAL_IMAGE_FORMAT.match(f)
         if matcher is None:
             continue
         age, gender, dtime = matcher.groups()
@@ -79,8 +79,8 @@ def sort_to_classes(root, print_cycle=np.inf):
         copyfile(srcfile, dstfile)
         copied_count += 1
         if copied_count % print_cycle == 0:
-            log('Copied %d files.' % copied_count)
-    log('Finished labeling process.')
+            log('Copied %d files' % copied_count)
+    log('Finished labeling process')
 
 def str_to_tensor(text, normalize=False):
     age_group, gender = text.split('.')
@@ -151,31 +151,31 @@ class LossTracker(object):
             plt.switch_backend("agg")
 
     # deprecated
-    def append(self, train_loss, valid_loss, tv_loss, uni_loss, path):
-        self.train_losses.append(train_loss)
-        self.valid_losses.append(valid_loss)
-        self.tv_losses.append(tv_loss)
-        self.uni_losses.append(uni_loss)
-        self.paths.append(path)
-        self.epochs += 1
-        if self.use_heuristics and self.epochs >= 2:
-            delta_train = self.train_losses[-1] - self.train_losses[-2]
-            delta_valid = self.valid_losses[-1] - self.valid_losses[-2]
-            if delta_train < -self.eps and delta_valid < -self.eps:
-                pass  # good fit, continue training
-            elif delta_train < -self.eps and delta_valid > +self.eps:
-                pass  # overfit, consider stop the training now
-            elif delta_train > +self.eps and delta_valid > +self.eps:
-                pass  # underfit, if this is in an advanced epoch, break
-            elif delta_train > +self.eps and delta_valid < -self.eps:
-                pass  # unknown fit, check your model, optimizers and loss functions
-            elif 0 < delta_train < +self.eps and self.epochs >= 3:
-                prev_delta_train = self.train_losses[-2] - self.train_losses[-3]
-                if 0 < prev_delta_train < +self.eps:
-                    pass  # our training loss is increasing but in less than eps,
-                    # this is a drift that needs to be caught, consider lower eps next time
-            else:
-                pass  # saturation \ small fluctuations
+    # def append(self, train_loss, valid_loss, tv_loss, uni_loss, path):
+    #     self.train_losses.append(train_loss)
+    #     self.valid_losses.append(valid_loss)
+    #     self.tv_losses.append(tv_loss)
+    #     self.uni_losses.append(uni_loss)
+    #     self.paths.append(path)
+    #     self.epochs += 1
+    #     if self.use_heuristics and self.epochs >= 2:
+    #         delta_train = self.train_losses[-1] - self.train_losses[-2]
+    #         delta_valid = self.valid_losses[-1] - self.valid_losses[-2]
+    #         if delta_train < -self.eps and delta_valid < -self.eps:
+    #             pass  # good fit, continue training
+    #         elif delta_train < -self.eps and delta_valid > +self.eps:
+    #             pass  # overfit, consider stop the training now
+    #         elif delta_train > +self.eps and delta_valid > +self.eps:
+    #             pass  # underfit, if this is in an advanced epoch, break
+    #         elif delta_train > +self.eps and delta_valid < -self.eps:
+    #             pass  # unknown fit, check your model, optimizers and loss functions
+    #         elif 0 < delta_train < +self.eps and self.epochs >= 3:
+    #             prev_delta_train = self.train_losses[-2] - self.train_losses[-3]
+    #             if 0 < prev_delta_train < +self.eps:
+    #                 pass  # our training loss is increasing but in less than eps,
+    #                 # this is a drift that needs to be caught, consider lower eps next time
+    #         else:
+    #             pass  # saturation \ small fluctuations
 
     def append_single(self, name, value):
         self.losses[name].append(value)
@@ -201,7 +201,7 @@ class LossTracker(object):
 
     @staticmethod
     def show():
-        print("in show")
+        logging.info("Inside show")
         plt.show()
 
     @staticmethod

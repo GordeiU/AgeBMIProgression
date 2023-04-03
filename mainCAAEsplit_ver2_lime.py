@@ -108,7 +108,7 @@ if __name__ == '__main__':
             net.load(args.load)
             logging.info("Loading pre-trained models from {}".format(args.load))
 
-        data_src = args.input or consts.UTKFACE_DEFAULT_PATH
+        data_src = args.input or consts.DEFAULT_PATH
         logging.info("Data folder is {}".format(data_src))
 
         results_dest = args.output or default_train_results_dir()
