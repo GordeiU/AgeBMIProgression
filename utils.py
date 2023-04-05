@@ -8,6 +8,8 @@ import numpy as np
 import logging
 from sklearn.metrics import mean_squared_error as mse
 
+# import shutil
+
 import torch
 import torchvision.transforms as transforms
 from torchvision.datasets import ImageFolder
@@ -16,7 +18,7 @@ from torchvision.utils import save_image
 
 import consts
 import matplotlib
-matplotlib.use('Agg')
+matplotlib.use('svg')
 
 def save_image_normalized(*args, **kwargs):
     save_image(*args, **kwargs, normalize=True, range=(-1, 1), padding=4)
@@ -57,7 +59,6 @@ def sort_to_classes(root):
     if not files:
         raise FileNotFoundError(f"No image files in {root}")
 
-    copied_count = 0
     sorted_folder = os.path.join(root, '..', 'labeled')
 
     if not os.path.isdir(sorted_folder):
@@ -79,8 +80,8 @@ def sort_to_classes(root):
         if not os.path.isdir(dstfolder):
             os.mkdir(dstfolder)
         copyfile(srcfile, dstfile)
-        copied_count += 1
 
+    # shutil.rmtree(sorted_folder)
     log('Finished labeling process')
 
 def str_to_tensor(text, normalize=False):
@@ -95,23 +96,22 @@ def str_to_tensor(text, normalize=False):
     return result
 
 
-class Label(namedtuple('Label', ('age', 'bmi_group'))):
-    def __init__(self, age, bmi_group):
+class Label(namedtuple('Label', ('age_group', 'bmi_group'))):
+    def __init__(self, age_group, bmi_group):
         super(Label, self).__init__()
-        self.age_group = self.age_transform(self.age)
 
     def to_str(self):
         return '%d.%d' % (self.age_group, self.bmi_group)
 
-    @staticmethod
-    def age_transform(age): #TODO: Modify to fit my needs
-        age -= 1
-        if age < 20:
-            # first 4 age groups are for kids <= 20, 5 years intervals
-            return max(age // 5, 0)
-        else:
-            # last (6?) age groups are for adults > 20, 10 years intervals
-            return min(4 + (age - 20) // 10, consts.NUM_AGES - 1)
+    # @staticmethod  #TODO: Modify to fit my needs
+    # def age_transform(age):
+    #     age -= 1
+    #     if age < 20:
+    #         # first 4 age groups are for kids <= 20, 5 years intervals
+    #         return max(age // 5, 0)
+    #     else:
+    #         # last (6?) age groups are for adults > 20, 10 years intervals
+    #         return min(4 + (age - 20) // 10, consts.NUM_AGES - 1)
 
     def to_tensor(self, normalize=False):
         return str_to_tensor(self.to_str(), normalize=normalize)
