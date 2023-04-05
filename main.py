@@ -101,6 +101,8 @@ if __name__ == '__main__':
         logging.info("CUDA initiating started...")
         net.cuda()
         logging.info("CUDA initiating finished")
+    else:
+        logging.info("CUDA not started")
 
     if args.mode == 'train':
 
