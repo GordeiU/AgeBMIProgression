@@ -22,7 +22,7 @@ pip install -r requirements.txt
 python mainCAAEsplit_ver2_lime.py --mode train --epochs NUMBER --output checkpoints
 ```
 
-# Run Book
+# Run Book Data
 
 1. Unzip the `data.zip`, it should have the following structure:
 
