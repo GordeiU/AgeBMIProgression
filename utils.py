@@ -15,10 +15,8 @@ from torch.utils.data import DataLoader
 from torchvision.utils import save_image
 
 import consts
-import scienceplots
-
-plt.style.reload_library()
-plt.style.use('science')
+import matplotlib
+matplotlib.use('Agg')
 
 def save_image_normalized(*args, **kwargs):
     save_image(*args, **kwargs, normalize=True, range=(-1, 1), padding=4)
