@@ -98,8 +98,9 @@ if __name__ == '__main__':
         logging.basicConfig(level=logging.DEBUG)
 
     if not args.cpu and torch.cuda.is_available():
-        logging.info("CUDA initiated")
+        logging.info("CUDA initiating started...")
         net.cuda()
+        logging.info("CUDA initiating finished")
 
     if args.mode == 'train':
 
