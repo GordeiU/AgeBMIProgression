@@ -95,7 +95,10 @@ if __name__ == '__main__':
     net = model.Net()
 
     if args.debug:
-        logging.basicConfig(level=logging.DEBUG)
+        logging.basicConfig(
+            format='%(asctime)s %(levelname)-8s %(message)s',
+            level=logging.DEBUG,
+            datefmt='%Y-%m-%d %H:%M:%S')
 
     if not args.cpu and torch.cuda.is_available():
         logging.info("CUDA initiating started...")
