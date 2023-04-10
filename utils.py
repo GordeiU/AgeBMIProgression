@@ -103,15 +103,21 @@ class Label(namedtuple('Label', ('age_group', 'bmi_group'))):
     def to_str(self):
         return '%d.%d' % (self.age_group, self.bmi_group)
 
-    # @staticmethod  #TODO: Modify to fit my needs
-    # def age_transform(age):
-    #     age -= 1
-    #     if age < 20:
-    #         # first 4 age groups are for kids <= 20, 5 years intervals
-    #         return max(age // 5, 0)
-    #     else:
-    #         # last (6?) age groups are for adults > 20, 10 years intervals
-    #         return min(4 + (age - 20) // 10, consts.NUM_AGES - 1)
+    @staticmethod  #TODO: Modify to fit my needs
+    def age_transform(age):
+        if age < 20: raise ValueError(f"Age ({age}) is too small for the model.")
+        if 20 <= age and age < 25:
+            return 0
+        if 25 <= age and age < 30:
+            return 1
+        if 30 <= age and age < 35:
+            return 2
+        if 35 <= age and age < 40:
+            return 3
+        if 40 <= age and age < 70:
+            return 4
+
+        raise ValueError(f"Age ({age}) is too large for the model.")
 
     def to_tensor(self, normalize=False):
         return str_to_tensor(self.to_str(), normalize=normalize)
