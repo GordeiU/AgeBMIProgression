@@ -23,6 +23,8 @@ HEALTHY = 0
 OVERWEIGHT = 1
 OBESE = 2
 
+BMI_GROUPS = [HEALTHY, OVERWEIGHT, OBESE]
+
 DEFAULT_PATH = './data/inmates'
 ORIGINAL_IMAGE_FORMAT = re.compile('^([A-Z]\d+)_(\d+)_(\d+)\.jpg$')
 
