@@ -19,6 +19,21 @@ from torchvision.utils import save_image
 import consts
 import matplotlib
 matplotlib.use('svg')
+from PIL import Image
+
+def stack_images_vertically(image_paths, output_path):
+    images = [Image.open(path) for path in image_paths]
+    max_width = max([img.width for img in images])
+    total_height = sum([img.height for img in images])
+
+    stacked_image = Image.new('RGB', (max_width, total_height))
+
+    y_offset = 0
+    for img in images:
+        stacked_image.paste(img, (0, y_offset))
+        y_offset += img.height
+
+    stacked_image.save(output_path)
 
 def save_image_normalized(*args, **kwargs):
     save_image(*args, **kwargs, normalize=True, range=(-1, 1), padding=4)
@@ -123,7 +138,6 @@ class Label(namedtuple('Label', ('age_group', 'bmi_group'))):
         return str_to_tensor(self.to_str(), normalize=normalize)
 
 
-
 fmt_t = "%H_%M"
 fmt = "%Y_%m_%d"
 
@@ -156,33 +170,6 @@ class LossTracker(object):
             plt.show()
         else:
             plt.switch_backend("agg")
-
-    # deprecated
-    # def append(self, train_loss, valid_loss, tv_loss, uni_loss, path):
-    #     self.train_losses.append(train_loss)
-    #     self.valid_losses.append(valid_loss)
-    #     self.tv_losses.append(tv_loss)
-    #     self.uni_losses.append(uni_loss)
-    #     self.paths.append(path)
-    #     self.epochs += 1
-    #     if self.use_heuristics and self.epochs >= 2:
-    #         delta_train = self.train_losses[-1] - self.train_losses[-2]
-    #         delta_valid = self.valid_losses[-1] - self.valid_losses[-2]
-    #         if delta_train < -self.eps and delta_valid < -self.eps:
-    #             pass  # good fit, continue training
-    #         elif delta_train < -self.eps and delta_valid > +self.eps:
-    #             pass  # overfit, consider stop the training now
-    #         elif delta_train > +self.eps and delta_valid > +self.eps:
-    #             pass  # underfit, if this is in an advanced epoch, break
-    #         elif delta_train > +self.eps and delta_valid < -self.eps:
-    #             pass  # unknown fit, check your model, optimizers and loss functions
-    #         elif 0 < delta_train < +self.eps and self.epochs >= 3:
-    #             prev_delta_train = self.train_losses[-2] - self.train_losses[-3]
-    #             if 0 < prev_delta_train < +self.eps:
-    #                 pass  # our training loss is increasing but in less than eps,
-    #                 # this is a drift that needs to be caught, consider lower eps next time
-    #         else:
-    #             pass  # saturation \ small fluctuations
 
     def append_single(self, name, value):
         self.losses[name].append(value)
@@ -225,13 +212,11 @@ class LossTracker(object):
 def mean(l):
     return np.array(l).mean()
 
-
 def uni_loss(input):
     assert len(input.shape) == 2
     batch_size, input_size = input.size()
     hist = torch.histc(input=input, bins=input_size, min=-1, max=1)
     return mse(hist, batch_size * torch.ones_like(hist)) / input_size
-
 
 def easy_deconv(in_dims, out_dims, kernel, stride=1, groups=1, bias=True, dilation=1):
     if isinstance(kernel, int):
@@ -271,7 +256,6 @@ def easy_deconv(in_dims, out_dims, kernel, stride=1, groups=1, bias=True, dilati
         dilation=dilation
     )
 
-
 def remove_trained(folder):
     if os.path.isdir(folder):
         removed_ctr = 0
@@ -285,7 +269,6 @@ def remove_trained(folder):
                     logging.error("Failed removing {}: {}".format(tm, e))
         if removed_ctr > 0:
             logging.info("Removed {} trained models from {}".format(removed_ctr, folder))
-
 
 def merge_images(batch1, batch2):
     assert batch1.shape == batch2.shape

@@ -171,7 +171,7 @@ if __name__ == '__main__':
             net.my_test_single(
                 image_tensor=image_tensor,
                 image_name=image_name,
-                age=args.age,
+                age_group=args.age,
                 bmi_group=args.bmi_group,
                 target=results_dest,
                 watermark=args.watermark

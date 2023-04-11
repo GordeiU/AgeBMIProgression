@@ -14,11 +14,6 @@ from torch.nn.functional import binary_cross_entropy_with_logits as bce_with_log
 from torch.optim import Adam
 from torch.utils.data import DataLoader
 
-# NEW
-from torch.autograd import Variable
-from utils_xai import *
-torch.autograd.set_detect_anomaly(True)
-
 
 class Encoder(nn.Module):
     def __init__(self):
@@ -84,37 +79,15 @@ class DiscriminatorZ(nn.Module):
             'dz_fc_%d' % (i + 1),
             nn.Sequential(
                 nn.Linear(out_dim, 1),
-                # nn.Sigmoid()  # commented out because logits are needed
             )
         )
 
-        # self.layers.add_module(   # XAI
-        #     'dz_out',
-        #     nn.Sequential(
-        #         # nn.Linear(out_dim, 1),
-        #         nn.Sigmoid()  # commented out because logits are needed
-        #     )
-        # )
-
     def forward(self, z):
         out = z
-        # for layer in self.layers[:-1]: # XAI
-        #     out = layer(out)
-        # out_sigmoid = self.layers.dz_out(out)
         # return out, out_sigmoid
         for layer in self.layers:
             out = layer(out)
         return out
-
-
-# class WrapperDiscriminatorImgModel(nn.Module):
-#
-#     def __init__(self, model):
-#         self.model = model
-#
-#     def forward(...):
-#         return self.model(...)
-#
 
 class DiscriminatorImg(nn.Module):
     def __init__(self):
@@ -153,29 +126,9 @@ class DiscriminatorImg(nn.Module):
         self.fc_layers.add_module(  #XAI
             'dimg_out',
             nn.Sequential(
-                # nn.Linear(out_dim, 1),
                 nn.Sigmoid()
             )
         )
-
-
-    def xai_forward(self, func):  #XAI Add wrapper function for Dimg forward pass
-        """Decorator for forward function of discriminator"""
-
-        def inner1(imgs, labels, device='cuda'):
-            output_logits, output_sigmoid = func(imgs, labels, device)
-            return output_sigmoid
-        return inner1
-
-    def xai_forward_lime(self, func):  #XAI Add wrapper function for Dimg forward pass
-        """Decorator for forward function of discriminator"""
-
-        def inner1(imgs, labels, device='cpu'):
-            self.cpu()
-            # if labels# XAI
-            output_logits, output_sigmoid = func(imgs, labels, device='cpu')
-            return output_sigmoid
-        return inner1
 
     def forward(self, imgs, labels, device):
         out = imgs
@@ -207,10 +160,8 @@ class DimgWrapperModel(nn.Module):
         self.model = model
 
     def forward(self, imgs, labels, device='cpu'):
-        # self.cpu()
         if len(labels.shape):
             labels = labels.squeeze(1)
-        # return self.model.xai_forward(self.model.forward(imgs=imgs, labels=labels, device='cuda'))
         return self.model(imgs=imgs, labels=labels, device='cpu')
 
 
@@ -226,11 +177,8 @@ class Generator(nn.Module):
             ),
             nn.ReLU()
         )
-        # need to reshape now to ?,1024,8,8
 
         self.deconv_layers = nn.ModuleList()
-
-        # in_dims = (16, 128, 128), out_dims = (3, 128, 128), kernel = 1, stride = 1, actf = nn.Tanh())
 
         def add_deconv(name, in_dims, out_dims, kernel, stride, actf):
             self.deconv_layers.add_module(
@@ -254,10 +202,6 @@ class Generator(nn.Module):
         add_deconv('g_deconv_6', in_dims=(32, 128, 128), out_dims=(16, 128, 128), kernel=5, stride=1, actf=nn.ReLU())
         add_deconv('g_deconv_7', in_dims=(16, 128, 128), out_dims=(3, 128, 128), kernel=1, stride=1, actf=nn.Tanh())
 
-
-    def _decompress(self, x):
-        return x.view(x.size(0), 1024, 4, 4)  # TODO - replace hardcoded
-
     def forward(self, z, age=None, bmi_group=None):
         out = z
         if age is not None and bmi_group is not None:
@@ -266,7 +210,7 @@ class Generator(nn.Module):
                 else torch.cat((age, bmi_group), 1)
             out = torch.cat((out, label), 1)  # z_l
         out = self.fc(out)
-        out = self._decompress(out)
+        out = out.view(out.size(0), 1024, 4, 4)
         for i, deconv_layer in enumerate(self.deconv_layers, 1):
             out = deconv_layer(out)
         return out
@@ -285,7 +229,6 @@ class Net(object):
 
         self.device = None
         self.cpu()  # initial, can later move to cuda
-        # self.cuda = True
 
     def __call__(self, *args, **kwargs):
         self.test_single(*args, **kwargs)
@@ -314,37 +257,7 @@ class Net(object):
         print_timestamp("Saved test result to " + dest)
         return dest
 
-    def kids(self, image_tensors, length, target):
-
-        self.eval()
-
-        original_vectors = [None, None]
-        for i in range(2):
-            z = self.E(image_tensors[i].unsqueeze(0)).squeeze(0)
-            original_vectors[i] = z
-
-        z_vectors = torch.zeros((length, consts.NUM_Z_CHANNELS), dtype=z.dtype)
-        z_l_vectors = torch.zeros((length, consts.NUM_Z_CHANNELS + consts.LABEL_LEN_EXPANDED), dtype=z.dtype)
-        for i in range(length):
-            for j in range(consts.NUM_Z_CHANNELS):
-                r = random.random()
-                z_vectors[i][j] = original_vectors[0][j].mul(r) + original_vectors[1][j].mul(1 - r)
-
-            fake_age = 0
-            fake_bmi_group = random.choice([consts.HEALTHY, consts.OVERWEIGHT, consts.OBESE])
-            l = Label(fake_age, fake_bmi_group).to_tensor(normalize=True).to(device=z.device)
-            z_l = torch.cat((z_vectors[i], l), 0)
-            z_l_vectors[i, :] = z_l
-
-        generated = self.G(z_l_vectors)
-        dest = os.path.join(target, 'kids.png')
-        save_image_normalized(tensor=generated, filename=dest, nrow=generated.size(0))
-        print_timestamp("Saved test result to " + dest)
-        return dest
-
-
     def test_single(self, image_tensor, age, bmi_group, target, watermark):
-
         self.eval()
         batch = image_tensor.repeat(consts.NUM_AGES, 1, 1, 1).to(device=self.device)  # N x D x H x W
         z = self.E(batch)  # N x Z
@@ -366,92 +279,33 @@ class Net(object):
             image_tensor = image_tensor.permute(1, 2, 0)
             image_tensor = 255 * one_sided(image_tensor.numpy())
             image_tensor = np.ascontiguousarray(image_tensor, dtype=np.uint8)
-            font = cv2.FONT_HERSHEY_SIMPLEX
-            bottomLeftCornerOfText = (2, 25)
-            fontScale = 0.5
-            fontColor = (0, 128, 0)  # dark green, should be visible on most skin colors
-            lineType = 2
+            font = cv2.FONT_HERSHEY_PLAIN
+            bottomLeftCornerOfText = (1, 10)
+            fontScale = .8
+            fontColor = (255, 255, 255)
             cv2.putText(
                 image_tensor,
-                '{}, {}, {}'.format(["Healthy", "Overweight", "Obese"][bmi_group], age),
+                'BMI:{}|Age: {}'.format(["Healthy", "Overweight", "Obese"][bmi_group], age),
                 bottomLeftCornerOfText,
                 font,
                 fontScale,
                 fontColor,
-                lineType,
-
             )
             image_tensor = two_sided(torch.from_numpy(image_tensor / 255.0)).float().permute(2, 0, 1)
 
         joined = torch.cat((image_tensor.unsqueeze(0), generated), 0)
 
         joined = nn.ConstantPad2d(padding=4, value=-1)(joined)
+
         for img_idx in (0, Label.age_transform(age) + 1):
-            for elem_idx in (0, 1, 2, 3, -4, -3, -2, -1):
-                joined[img_idx, :, elem_idx, :] = 1  # color border white
-                joined[img_idx, :, :, elem_idx] = 1  # color border white
+            for elem_idx in (0, 1, 2, 3):
+                joined[img_idx, :, elem_idx, :] = 1
+                joined[img_idx, :, -elem_idx-1, :] = 1
+                joined[img_idx, :, :, elem_idx] = 1
+                joined[img_idx, :, :, -elem_idx-1] = 1
 
 
         dest = os.path.join(target, 'menifa.png')
-        save_image_normalized(tensor=joined, filename=dest, nrow=joined.size(0))
-        print_timestamp("Saved test result to " + dest)
-        return dest
-
-    def my_test_single(self, image_tensor, image_name, age, bmi_group, target, watermark):
-        self.eval()
-        batch = image_tensor.repeat(consts.NUM_AGES, 1, 1, 1).to(device=self.device)  # N x D x H x W
-        z = self.E(batch)  # N x Z
-
-        bmi_group_tensor = -torch.ones(consts.NUM_BMI_GROUPS)
-        bmi_group_tensor[int(bmi_group)] *= -1
-        bmi_group_tensor = bmi_group_tensor.repeat(consts.NUM_AGES, consts.NUM_AGES // consts.NUM_BMI_GROUPS)  # apply bmi_group on all images
-
-        age_tensor = -torch.ones(consts.NUM_AGES, consts.NUM_AGES)
-        for i in range(consts.NUM_AGES):
-            age_tensor[i][i] *= -1  # apply the i'th age group on the i'th image
-
-        l = torch.cat((age_tensor, bmi_group_tensor), 1).to(self.device)
-        z_l = torch.cat((z, l), 1)
-
-        generated = self.G(z_l)
-        for i in range(0, generated.size(0)):
-            save_image_normalized(tensor=generated[i],
-                                  filename=os.path.join(target, str(age) + '.' + str(bmi_group) + '_to_' + str(i) + '.'
-                                                        + str(bmi_group), image_name),
-                                  nrow=1)
-
-
-        if watermark:
-            image_tensor = image_tensor.permute(1, 2, 0)
-            image_tensor = 255 * one_sided(image_tensor.numpy())
-            image_tensor = np.ascontiguousarray(image_tensor, dtype=np.uint8)
-            font = cv2.FONT_HERSHEY_SIMPLEX
-            bottomLeftCornerOfText = (2, 25)
-            fontScale = 0.5
-            fontColor = (0, 128, 0)  # dark green, should be visible on most skin colors
-            lineType = 2
-            cv2.putText(
-                image_tensor,
-                '{}, {}'.format(["Male", "Female"][bmi_group], age),
-                bottomLeftCornerOfText,
-                font,
-                fontScale,
-                fontColor,
-                lineType,
-
-            )
-            image_tensor = two_sided(torch.from_numpy(image_tensor / 255.0)).float().permute(2, 0, 1)
-
-        joined = torch.cat((image_tensor.unsqueeze(0), generated), 0)
-
-        joined = nn.ConstantPad2d(padding=4, value=-1)(joined)
-        for img_idx in (0, Label.age_transform(age) + 1):
-            for elem_idx in (0, 1, 2, 3, -4, -3, -2, -1):
-                joined[img_idx, :, elem_idx, :] = 1  # color border white
-                joined[img_idx, :, :, elem_idx] = 1  # color border white
-
-
-        dest = os.path.join(target, str(age) + '.' + str(bmi_group) + '_to_all', image_name)
         save_image_normalized(tensor=joined, filename=dest, nrow=joined.size(0))
         print_timestamp("Saved test result to " + dest)
         return dest
@@ -462,7 +316,6 @@ class Net(object):
         self.dz_optimizer.zero_grad()
 
         # DiscriminatorZ Loss
-        # z_prior = two_sided(torch.rand_like(z, device=self.device))  # [-1 : 1]
         d_z_prior = self.Dz(z_prior)
         d_z = self.Dz(z)
 
@@ -472,11 +325,8 @@ class Net(object):
         losses['dz'].append(dz_loss_tot.item())
 
         input_output_loss = l1_loss
-        # z = self.E(images)
 
         # Input\Output Loss
-        # z_l = torch.cat((z, labels), 1)
-        # generated = self.G(z_l)
         eg_loss = input_output_loss(generated, images)
         losses['eg'].append(eg_loss.item())
 
@@ -497,32 +347,19 @@ class Net(object):
         # DiscriminatorImg Loss
         d_i_output, d_i_output_sigmoid = self.Dimg(generated, labels, self.device)
 
-        if local_explainable:
-            get_explanation_dimg(generated_data=generated,
-                                 discriminator=self.Dimg,
-                                 prediction=d_i_output_sigmoid,
-                                 XAItype=explanation_type, cuda=True, trained_data=trained_data,
-                                 labels=labels, device=self.device)
-
         # Generator\DiscriminatorImg Loss
         dg_loss = 0.0001 * bce_with_logits_loss(d_i_output, torch.ones_like(d_i_output))
         losses['dg'].append(dg_loss.item())
 
-        # Back prop on Encoder\Generator
-        # self.eg_optimizer.zero_grad()
-        # self.dz_optimizer.zero_grad()
-
         loss = eg_loss + reg_loss + ez_loss + dg_loss
         loss.backward(retain_graph=True)
 
-        # Back prop on DiscriminatorZ
         dz_loss_tot.backward()
 
         self.eg_optimizer.step()
         self.dz_optimizer.step()
 
         return loss
-
 
     def teach_discriminator_img(self, generated, images, labels, losses):
         self.di_optimizer.zero_grad()
@@ -552,9 +389,6 @@ class Net(object):
             models_saving='always',
             explainable=False,
             explanation_type=None):
-
-        if explainable:  #XAI
-            explanationSwitch = (epochs + 1) / 2 if epochs % 2 == 1 else epochs / 2
 
         where_to_save = where_to_save or default_where_to_save()
         logging.info(f"Model saving path: {where_to_save}")
@@ -586,16 +420,7 @@ class Net(object):
         save_count = 0
         paths_for_gif = []
 
-        if explainable:  #XAI
-            trained_data = Variable(next(iter(train_loader))[0])
-            trained_data_labels = Variable(next(iter(train_loader))[1])
-            trained_data_labels = torch.stack([str_to_tensor(idx_to_class[l], normalize=True) for l
-                                               in list(trained_data_labels.numpy())])
-            if self.device != 'cpu':
-                trained_data = trained_data.to(device=self.device)
-                trained_data_labels = trained_data_labels.to(device=self.device) #XAI
-        else:
-            trained_data = None
+        trained_data = None
 
         local_explainable = False
         for epoch in range(1, epochs + 1):
@@ -607,10 +432,6 @@ class Net(object):
                     os.makedirs(where_to_save_epoch)
                 paths_for_gif.append(where_to_save_epoch)
                 losses = defaultdict(lambda: [])
-
-                if explainable and (epoch - 1) == explanationSwitch:  # XAI
-                    self.G.deconv_layers.g_deconv_7.register_backward_hook(explanation_hook_cifar) #XAI
-                    local_explainable = True  #XAI
 
                 self.train()  # move to train mode
                 for i, (images, labels) in enumerate(train_loader, 1):
@@ -641,7 +462,7 @@ class Net(object):
 
                     # this loss is only for debugging
                     uni_diff_loss = (uni_loss(z.cpu().detach()) - uni_loss(z_prior.cpu().detach())) / batch_size
-                    losses['uni_diff'].append(uni_diff_loss)
+                    # losses['uni_diff'].append(uni_diff_loss)
 
                     now = datetime.datetime.now()
 
@@ -744,17 +565,7 @@ class Net(object):
         where_to_save_epoch = ""
         save_count = 0
         paths_for_gif = []
-
-        if explainable:  #XAI
-            trained_data = Variable(next(iter(train_loader))[0])
-            trained_data_labels = Variable(next(iter(train_loader))[1])
-            trained_data_labels = torch.stack([str_to_tensor(idx_to_class[l], normalize=True) for l
-                                               in list(trained_data_labels.numpy())])
-            if self.device != 'cpu':
-                trained_data = trained_data.to(device=self.device)
-                trained_data_labels = trained_data_labels.to(device=self.device) #XAI
-        else:
-            trained_data = None
+        trained_data = None
 
         local_explainable = False
         for epoch in range(1, epochs + 1):
@@ -765,28 +576,12 @@ class Net(object):
                 paths_for_gif.append(where_to_save_epoch)
                 losses = defaultdict(lambda: [])
 
-                if explainable and (epoch - 1) == explanationSwitch:  # XAI
-                    self.G.deconv_layers.g_deconv_7.register_backward_hook(explanation_hook_cifar) #XAI
-                    local_explainable = True  #XAI
-
                 self.train()  # move to train mode
                 for i, (images, labels) in enumerate(train_loader, 1):
 
                     images = images.to(device=self.device)
                     labels = torch.stack([str_to_tensor(idx_to_class[l], normalize=True) for l in list(labels.numpy())])  # todo - can remove list() ?
                     labels = labels.to(device=self.device)
-                # for check in range(8):
-                #     for i, (images, labels) in enumerate(train_loader, 1):
-                    # i = check
-                    # batch = next(iter(train_loader))
-                    # images = batch[0]
-                    # labels = batch[1]
-                    # images = images.to(device=self.device)
-                    # labels = torch.stack([str_to_tensor(idx_to_class[l], normalize=True) for l in
-                    #                       list(labels.numpy())])  # todo - can remove list() ?
-                    # labels = labels.to(device=self.device)
-
-                    # print ("DEBUG: iteration: "+str(i)+" images shape: "+str(images.shape))
                     z = self.E(images)
 
                     # Input\Output Loss
@@ -798,10 +593,6 @@ class Net(object):
                     # Total Variance Regularization Loss
                     reg = l1_loss(generated[:, :, :, :-1], generated[:, :, :, 1:]) + l1_loss(generated[:, :, :-1, :], generated[:, :, 1:, :])
 
-                    # reg = (
-                    #        torch.sum(torch.abs(generated[:, :, :, :-1] - generated[:, :, :, 1:])) +
-                    #        torch.sum(torch.abs(generated[:, :, :-1, :] - generated[:, :, 1:, :]))
-                    # ) / float(generated.size(0))
                     reg_loss = 0 * reg
                     reg_loss.to(self.device)
                     losses['reg'].append(reg_loss.item())
@@ -810,18 +601,6 @@ class Net(object):
                     z_prior = two_sided(torch.rand_like(z, device=self.device))  # [-1 : 1]
                     d_z_prior = self.Dz(z_prior)
                     d_z = self.Dz(z)
-                    # d_z_prior, d_z_prior_sigmoid = self.Dz(z_prior)  # XAI
-                    # d_z, d_z_sigmoid = self.Dz(z)
-                    # d_z_sigmoid2 = self.Dz.xai_forward(self.Dz.forward)(z)
-
-                    # if local_explainable:
-                    #     get_explanation_dz(generated_data=z,
-                    #                     discriminator=self.Dz.xai_forward(self.Dz.forward),
-                    #                     prediction=d_z_sigmoid,
-                    #                     XAItype=explanationType,
-                    #                     cuda=True,
-                    #                     trained_data=trained_data,
-                    #                     device=self.device)
 
                     dz_loss_prior = bce_with_logits_loss(d_z_prior, torch.ones_like(d_z_prior))
                     dz_loss = bce_with_logits_loss(d_z, torch.zeros_like(d_z))
@@ -835,20 +614,8 @@ class Net(object):
                     losses['ez'].append(ez_loss.item())
 
                     # DiscriminatorImg Loss
-                    # d_i_input = self.Dimg(images, labels, self.device)
-                    # d_i_output = self.Dimg(generated, labels, self.device)
                     d_i_input, d_i_input_sigmoid = self.Dimg(images, labels, self.device)
-                    # d_i_input_sigmoid2 = self.Dimg.hello_decorator(self.Dimg.forward)(images, labels, self.device)
                     d_i_output, d_i_output_sigmoid = self.Dimg(generated.detach(), labels, self.device)
-
-                    if local_explainable:
-                        get_explanation_dimg(generated_data=generated,
-                                        discriminator=self.Dimg.xai_forward(self.Dimg.forward),
-                                        # discriminator=self.Dimg,
-                                        prediction=d_i_output_sigmoid,
-                                        XAItype=explanation_type, cuda=True, trained_data=trained_data,
-                                        labels=labels, device=self.device)
-
                     di_input_loss = bce_with_logits_loss(d_i_input, torch.ones_like(d_i_input))
                     di_output_loss = bce_with_logits_loss(d_i_output, torch.zeros_like(d_i_output))
                     di_loss_tot = (di_input_loss + di_output_loss)
@@ -860,7 +627,6 @@ class Net(object):
 
                     # this loss is only for debugging
                     uni_diff_loss = (uni_loss(z.cpu().detach()) - uni_loss(z_prior.cpu().detach())) / batch_size
-                    # losses['uni_diff'].append(uni_diff_loss)
 
                     # Start back propagation
 
@@ -1032,13 +798,12 @@ class Net(object):
                 class_attr = getattr(self, class_attr_name)
                 fname = os.path.join(path, consts.TRAINED_MODEL_FORMAT.format(class_attr_name))
                 if hasattr(class_attr, 'load_state_dict') and os.path.exists(fname):
-                    class_attr.load_state_dict(torch.load(fname)())
+                    class_attr.load_state_dict(torch.load(fname, map_location=torch.device('cpu'))())
                     loaded.append(class_attr_name)
         if loaded:
             print_timestamp("Loaded {} from {}".format(', '.join(loaded), path))
         else:
             raise FileNotFoundError("Nothing was loaded from {}".format(path))
-
 
 def create_list_of_img_paths(pattern, start, step):
     result = []
@@ -1048,29 +813,3 @@ def create_list_of_img_paths(pattern, start, step):
         start += step
         fname = pattern.format(start)
     return result
-
-
-def create_gif(img_paths, dst, start, step):
-    BLACK = (255, 255, 255)
-    WHITE = (255, 255, 255)
-    MAX_LEN = 1024
-    frames = []
-    font = cv2.FONT_HERSHEY_SIMPLEX
-    corner = (2, 25)
-    fontScale = 0.5
-    fontColor = BLACK
-    lineType = 2
-    for path in img_paths:
-        image = cv2.imread(path)
-        height, width = image.shape[:2]
-        current_max = max(height, width)
-        if current_max > MAX_LEN:
-            height = int(height / current_max * MAX_LEN)
-            width = int(width / current_max * MAX_LEN)
-            image = cv2.resize(image, (width, height), interpolation=cv2.INTER_CUBIC)
-        image = cv2.copyMakeBorder(image, 50, 0, 0, 0, cv2.BORDER_CONSTANT, WHITE)
-        cv2.putText(image, 'Epoch: ' + str(start), corner, font, fontScale, fontColor, lineType)
-        image = image[..., ::-1]
-        frames.append(image)
-        start += step
-    imageio.mimsave(dst, frames, 'GIF', duration=0.5)
