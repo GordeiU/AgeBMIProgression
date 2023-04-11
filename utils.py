@@ -38,13 +38,11 @@ def stack_images_vertically(image_paths, output_path):
 def save_image_normalized(*args, **kwargs):
     save_image(*args, **kwargs, normalize=True, range=(-1, 1), padding=4)
 
-
 def two_sided(x):
     return 2 * (x - 0.5)
 
 def one_sided(x):
     return (x + 1) / 2
-
 
 pil_to_model_tensor_transform = transforms.Compose(
     [
@@ -53,7 +51,6 @@ pil_to_model_tensor_transform = transforms.Compose(
         transforms.Lambda(lambda t: t.mul(2).sub(1))  # Tensor elements domain: [0:1] -> [-1:1]
     ]
 )
-
 
 def get_dataset(root):
     logging.info(f"Getting dataset from: {root}")
@@ -137,23 +134,19 @@ class Label(namedtuple('Label', ('age_group', 'bmi_group'))):
     def to_tensor(self, normalize=False):
         return str_to_tensor(self.to_str(), normalize=normalize)
 
-
 fmt_t = "%H_%M"
 fmt = "%Y_%m_%d"
 
 def default_train_results_dir():
     return os.path.join('.', 'trained_models', datetime.datetime.now().strftime(fmt), datetime.datetime.now().strftime(fmt_t))
 
-
 def default_where_to_save(eval=True):
     path_str = os.path.join('.', 'results', datetime.datetime.now().strftime(fmt), datetime.datetime.now().strftime(fmt_t))
     if not os.path.exists(path_str):
         os.makedirs(path_str)
 
-
 def default_test_results_dir(eval=True):
     return os.path.join('.', 'test_results', datetime.datetime.now().strftime(fmt) if eval else fmt)
-
 
 def print_timestamp(s):
     logging.debug(f"[{datetime.datetime.now().strftime(fmt_t.replace('_', ':'))}] {s}")
@@ -207,7 +200,6 @@ class LossTracker(object):
         for name, value in self.losses.items():
             ret[name] = value[-1]
         return str(ret)
-
 
 def mean(l):
     return np.array(l).mean()
