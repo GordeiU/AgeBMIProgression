@@ -1,6 +1,8 @@
 from utils import *
 import consts
 
+import uuid
+
 import logging
 import random
 from collections import OrderedDict
@@ -257,13 +259,12 @@ class Net(object):
         print_timestamp("Saved test result to " + dest)
         return dest
 
-    def test_single(self, image_tensor, age, bmi_group, target, watermark):
-        self.eval()
+    def test_single_internal(self, image_tensor, age, orig_bmi_group, current_bmi, target):
         batch = image_tensor.repeat(consts.NUM_AGES, 1, 1, 1).to(device=self.device)  # N x D x H x W
         z = self.E(batch)  # N x Z
 
         bmi_group_tensor = -torch.ones(consts.NUM_BMI_GROUPS)
-        bmi_group_tensor[int(bmi_group)] *= -1
+        bmi_group_tensor[int(current_bmi)] *= -1
         bmi_group_tensor = bmi_group_tensor.repeat(consts.NUM_AGES, consts.NUM_AGES // consts.NUM_BMI_GROUPS)  # apply bmi_group on all images
 
         age_tensor = -torch.ones(consts.NUM_AGES, consts.NUM_AGES)
@@ -275,7 +276,8 @@ class Net(object):
 
         generated = self.G(z_l)
 
-        if watermark:
+        # print(orig_bmi_group, current_bmi, current_bmi == orig_bmi_group)
+        if current_bmi == orig_bmi_group:
             image_tensor = image_tensor.permute(1, 2, 0)
             image_tensor = 255 * one_sided(image_tensor.numpy())
             image_tensor = np.ascontiguousarray(image_tensor, dtype=np.uint8)
@@ -285,7 +287,7 @@ class Net(object):
             fontColor = (255, 255, 255)
             cv2.putText(
                 image_tensor,
-                'BMI:{}|Age: {}'.format(["Healthy", "Overweight", "Obese"][bmi_group], age),
+                'BMI:{}|Age: {}'.format(["Healthy", "Overweight", "Obese"][orig_bmi_group], age),
                 bottomLeftCornerOfText,
                 font,
                 fontScale,
@@ -304,11 +306,25 @@ class Net(object):
                 joined[img_idx, :, :, elem_idx] = 1
                 joined[img_idx, :, :, -elem_idx-1] = 1
 
-
-        dest = os.path.join(target, 'menifa.png')
+        dest = os.path.join(target, f'{uuid.uuid1()}.jpg')
         save_image_normalized(tensor=joined, filename=dest, nrow=joined.size(0))
         print_timestamp("Saved test result to " + dest)
         return dest
+
+    def test_single(self, image_tensor, age, orig_bmi_group, target):
+        self.eval()
+        images = []
+
+        for bmi in consts.BMI_GROUPS:
+            images.append(self.test_single_internal(image_tensor=image_tensor,
+                                                    age=age,
+                                                    orig_bmi_group=orig_bmi_group,
+                                                    current_bmi=bmi,
+                                                    target=target))
+
+        img_path = os.path.join('.', 'results', f"{uuid.uuid1()}.jpg")
+        stack_images_vertically(images, img_path)
+        return img_path
 
     def teach_encoder_generator_discriminatorZ(self, z, z_prior, generated, images, labels, losses,
                                                local_explainable, explanation_type, trained_data):
