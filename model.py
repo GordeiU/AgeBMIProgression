@@ -238,27 +238,6 @@ class Net(object):
     def __repr__(self):
         return os.linesep.join([repr(subnet) for subnet in (self.E, self.Dz, self.G)])
 
-    def morph(self, image_tensors, ages, bmi_groups, length, target):
-
-        self.eval()
-
-        original_vectors = [None, None]
-        for i in range(2):
-            z = self.E(image_tensors[i].unsqueeze(0))
-            l = Label(ages[i], bmi_groups[i]).to_tensor(normalize=True).unsqueeze(0).to(device=z.device)
-            z_l = torch.cat((z, l), 1)
-            original_vectors[i] = z_l
-
-        z_vectors = torch.zeros((length + 1, z_l.size(1)), dtype=z_l.dtype)
-        for i in range(length + 1):
-            z_vectors[i, :] = original_vectors[0].mul(length - i).div(length) + original_vectors[1].mul(i).div(length)
-
-        generated = self.G(z_vectors)
-        dest = os.path.join(target, 'morph.png')
-        save_image_normalized(tensor=generated, filename=dest, nrow=generated.size(0))
-        print_timestamp("Saved test result to " + dest)
-        return dest
-
     def test_single_internal(self, image_tensor, age, orig_bmi_group, current_bmi, target):
         batch = image_tensor.repeat(consts.NUM_AGES, 1, 1, 1).to(device=self.device)  # N x D x H x W
         z = self.E(batch)  # N x Z
