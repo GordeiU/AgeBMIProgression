@@ -16,6 +16,8 @@ from torch.nn.functional import binary_cross_entropy_with_logits as bce_with_log
 from torch.optim import Adam
 from torch.utils.data import DataLoader
 
+logging.getLogger().setLevel(logging.INFO)
+logging.basicConfig(format="%(asctime)s: [AgeBmiProgressionCAAE] [%(levelname)s]: %(message)s")
 
 class Encoder(nn.Module):
     def __init__(self):
@@ -238,12 +240,12 @@ class Net(object):
     def __repr__(self):
         return os.linesep.join([repr(subnet) for subnet in (self.E, self.Dz, self.G)])
 
-    def test_single_internal(self, image_tensor, age, orig_bmi_group, current_bmi, target):
+    def test_single_internal(self, image_tensor, age, orig_bmi_group, target):
         batch = image_tensor.repeat(consts.NUM_AGES, 1, 1, 1).to(device=self.device)  # N x D x H x W
         z = self.E(batch)  # N x Z
 
         bmi_group_tensor = -torch.ones(consts.NUM_BMI_GROUPS)
-        bmi_group_tensor[int(current_bmi)] *= -1
+        bmi_group_tensor[int(orig_bmi_group)] *= -1
         bmi_group_tensor = bmi_group_tensor.repeat(consts.NUM_AGES, consts.NUM_AGES // consts.NUM_BMI_GROUPS)  # apply bmi_group on all images
 
         age_tensor = -torch.ones(consts.NUM_AGES, consts.NUM_AGES)
@@ -255,8 +257,7 @@ class Net(object):
 
         generated = self.G(z_l)
 
-        # print(orig_bmi_group, current_bmi, current_bmi == orig_bmi_group)
-        if current_bmi == orig_bmi_group:
+        if True:
             image_tensor = image_tensor.permute(1, 2, 0)
             image_tensor = 255 * one_sided(image_tensor.numpy())
             image_tensor = np.ascontiguousarray(image_tensor, dtype=np.uint8)
@@ -274,36 +275,29 @@ class Net(object):
             )
             image_tensor = two_sided(torch.from_numpy(image_tensor / 255.0)).float().permute(2, 0, 1)
 
-        joined = torch.cat((image_tensor.unsqueeze(0), generated), 0)
+        # joined = torch.cat((image_tensor.unsqueeze(0), generated), 0)
 
-        joined = nn.ConstantPad2d(padding=4, value=-1)(joined)
+        for idx, prediction in enumerate(generated):
+            dest = os.path.join(target, f'{idx}.jpg')
+            save_image_normalized(tensor=prediction, filename=dest)
+            logging.info(f"Saved age progression result to: {os.path.basename(dest)}")
+        # joined = nn.ConstantPad2d(padding=4, value=-1)(joined)
 
-        for img_idx in (0, Label.age_transform(age) + 1):
-            for elem_idx in (0, 1, 2, 3):
-                joined[img_idx, :, elem_idx, :] = 1
-                joined[img_idx, :, -elem_idx-1, :] = 1
-                joined[img_idx, :, :, elem_idx] = 1
-                joined[img_idx, :, :, -elem_idx-1] = 1
+        # for img_idx in (0, Label.age_transform(age) + 1):
+        #     for elem_idx in (0, 1, 2, 3):
+        #         joined[img_idx, :, elem_idx, :] = 1
+        #         joined[img_idx, :, -elem_idx-1, :] = 1
+        #         joined[img_idx, :, :, elem_idx] = 1
+        #         joined[img_idx, :, :, -elem_idx-1] = 1
 
-        dest = os.path.join(target, f'{uuid.uuid1()}.jpg')
-        save_image_normalized(tensor=joined, filename=dest, nrow=joined.size(0))
-        print_timestamp("Saved test result to " + dest)
-        return dest
-
-    def test_single(self, image_tensor, age, orig_bmi_group, target):
+    def test_single(self, image_tensor, image_name, age_group, bmi_group, target):
         self.eval()
         images = []
 
-        for bmi in consts.BMI_GROUPS:
-            images.append(self.test_single_internal(image_tensor=image_tensor,
-                                                    age=age,
-                                                    orig_bmi_group=orig_bmi_group,
-                                                    current_bmi=bmi,
-                                                    target=target))
-
-        img_path = os.path.join('.', 'results', f"{uuid.uuid1()}.jpg")
-        stack_images_vertically(images, img_path)
-        return img_path
+        images.append(self.test_single_internal(image_tensor=image_tensor,
+                                                age=age_group,
+                                                orig_bmi_group=bmi_group,
+                                                target=target))
 
     def teach_encoder_generator_discriminatorZ(self, z, z_prior, generated, images, labels, losses,
                                                local_explainable, explanation_type, trained_data):
@@ -777,7 +771,7 @@ class Net(object):
                         saved.append(class_attr_name)
 
         if saved:
-            print_timestamp("Saved {} to {}".format(', '.join(saved), path))
+            logging.info(f"Saved age progression image {os.path.basename(path)}")
         elif to_save_models:
             raise FileNotFoundError("Nothing was saved to {}".format(path))
         return path

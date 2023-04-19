@@ -32,18 +32,6 @@ def str_to_bmi_group(s):
     else:
         raise KeyError("No bmi_group found")
 
-
-# TODO: Remove?
-# def str_to_bool(s):
-#     s = s.lower()
-#     if s in ('true', 't', 'yes', 'y', '1'):
-#         return True
-#     elif s in ('false', 'f', 'no', 'n', 'o'):
-#         return False
-#     else:
-#         raise KeyError("Invalid boolean")
-
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='AgeProgression on PyTorch.', formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('--mode', choices=['train', 'test'], default='train')
@@ -76,18 +64,18 @@ if __name__ == '__main__':
     parser.add_argument('--shouldplot', '--sp', dest='sp', default=False, type=bool)
 
     # test params
-    parser.add_argument('--age', '-a', required=False, type=int)
-    parser.add_argument('--bmi_group', '-g', required=False, type=str_to_bmi_group)
-    parser.add_argument('--watermark', '-w', action='store_true')
+    parser.add_argument('--age', default=23,required=False, type=int)
+    parser.add_argument('--bmi_group', default=0, required=False, type=str_to_bmi_group)
+    parser.add_argument('--watermark', action='store_true')
+    parser.add_argument('--image', required=False, type=str, help="Image input")
 
     # shared params
     parser.add_argument('--cpu', '-c', action='store_true', help='Run on CPU even if CUDA is available.')
-    parser.add_argument('--load', '-l', required=False, default=None, help='Trained models path for pre-training or for testing')
+    parser.add_argument('--load', '-l', required=False, default="/Users/gordeiussatsov/Notes/Notes/Studies/University/LastYear/Theses/AgeBMIProgression/models", help='Trained models path for pre-training or for testing')
     parser.add_argument('--input', '-i', default=None, help='Training dataset path (default is {}) or testing image path'.format(default_train_results_dir()))
     parser.add_argument('--output', '-o', default='')
-    parser.add_argument('--debug', action='store_true')
+    parser.add_argument('--debug', default=True, action='store_true')
     parser.add_argument('--no-debug', dest='debug', action='store_false')
-    parser.set_defaults(debug=True)
     parser.add_argument('-z', dest='z_channels', default=100, type=int, help='Length of Z vector')
     args = parser.parse_args()
 
@@ -115,7 +103,7 @@ if __name__ == '__main__':
 
         if args.load is not None:
             net.load(args.load)
-            logging.info("Loading pre-trained models from {}".format(args.load))
+            logging.info("Pre-trained model loaded")
 
         data_src = args.input or consts.DEFAULT_PATH
         logging.info("Data folder is {}".format(data_src))
@@ -130,7 +118,6 @@ if __name__ == '__main__':
         log_path = os.path.join(results_dest, 'log_results.log')
         if os.path.exists(log_path):
             os.remove(log_path)
-        logging.basicConfig(filename=log_path, level=logging.DEBUG)
 
         net.teachSplit(
             dataset_path=data_src,
@@ -142,37 +129,31 @@ if __name__ == '__main__':
             should_plot=args.sp,
             where_to_save=results_dest,
             models_saving=args.models_saving,
-            explainable=False, # Keep True for enabling the xAI-System - Change to False for the Original CAAE !
         )
 
     elif args.mode == 'test':
-
         if args.load is None:
             raise RuntimeError("Must provide path of trained models")
 
         net.load(path=args.load, slim=True)
 
-        results_dest = args.output or default_test_results_dir()
-        results_dest = os.path.join(results_dest, str(args.age) + '.' + str(args.bmi_group))
+        results_dest = os.path.join(args.output)
         if not os.path.isdir(results_dest):
             os.makedirs(results_dest)
 
-        args.input = os.path.join(args.input, str(args.age) + '.' + str(args.bmi_group))
+        # args.input = os.path.join(args.input, str(args.age) + '.' + str(args.bmi_group))
 
-        for x in range(0, consts.NUM_AGES):
-            if not os.path.exists(os.path.join(results_dest, str(args.age) + '.' + str(args.bmi_group) + '_to_' + str(x) + '.' + str(args.bmi_group))):
-                os.makedirs(os.path.join(results_dest, str(args.age) + '.' + str(args.bmi_group) + '_to_' + str(x) + '.' + str(args.bmi_group)))
-        if not os.path.exists(os.path.join(results_dest, str(args.age) + '.' + str(args.bmi_group) + '_to_all')):
-            os.makedirs(os.path.join(results_dest,str(args.age) + '.' + str(args.bmi_group) + '_to_all'))
+        # for x in range(0, consts.NUM_AGES):
+        #     if not os.path.exists(os.path.join(results_dest, str(args.age) + '.' + str(args.bmi_group) + '_to_' + str(x) + '.' + str(args.bmi_group))):
+        #         os.makedirs(os.path.join(results_dest, str(args.age) + '.' + str(args.bmi_group) + '_to_' + str(x) + '.' + str(args.bmi_group)))
+        # if not os.path.exists(os.path.join(results_dest, str(args.age) + '.' + str(args.bmi_group) + '_to_all')):
+        #     os.makedirs(os.path.join(results_dest,str(args.age) + '.' + str(args.bmi_group) + '_to_all'))
 
-        images = os.listdir(args.input)
-        for image_name in images:
-            image_tensor = pil_to_model_tensor_transform(pil_loader(os.path.join(args.input, image_name))).to(net.device)
-            net.my_test_single(
-                image_tensor=image_tensor,
-                image_name=image_name,
-                age_group=args.age,
-                bmi_group=args.bmi_group,
-                target=results_dest,
-                watermark=args.watermark
-            )
+        image_tensor = pil_to_model_tensor_transform(pil_loader(os.path.join(args.image))).to(net.device)
+        net.test_single(
+            image_tensor=image_tensor,
+            image_name=os.path.basename(args.image),
+            age_group=args.age,
+            bmi_group=args.bmi_group,
+            target=results_dest
+        )
