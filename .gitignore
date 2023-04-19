@@ -2,6 +2,11 @@
 trained_models/
 data/
 checkpoints/
+models/
+.tmp/
+.result/
+results/
+images/
 
 # macOS
 .DS_Store
