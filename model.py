@@ -49,7 +49,7 @@ class Encoder(nn.Module):
             OrderedDict(
                 [
                     ('e_fc_1', nn.Linear(in_features=1024, out_features=consts.NUM_Z_CHANNELS)),
-                    ('tanh_1', nn.Tanh())  # normalize to [-1, 1] range
+                    ('tanh_1', nn.Tanh())
                 ]
             )
         )
@@ -88,7 +88,6 @@ class DiscriminatorZ(nn.Module):
 
     def forward(self, z):
         out = z
-        # return out, out_sigmoid
         for layer in self.layers:
             out = layer(out)
         return out
@@ -122,12 +121,11 @@ class DiscriminatorImg(nn.Module):
             'dimg_fc_2',
             nn.Sequential(
                 nn.Linear(1024, 1),
-                # nn.Sigmoid()  # commented out because logits are needed
             )
         )
 
 
-        self.fc_layers.add_module(  #XAI
+        self.fc_layers.add_module(
             'dimg_out',
             nn.Sequential(
                 nn.Sigmoid()
@@ -137,24 +135,21 @@ class DiscriminatorImg(nn.Module):
     def forward(self, imgs, labels, device):
         out = imgs
 
-        # run convs
         for i, conv_layer in enumerate(self.conv_layers, 1):
             out = conv_layer(out)
             if i == 1:
-                # concat labels after first conv
                 labels_tensor = torch.zeros(torch.Size((out.size(0), labels.size(1), out.size(2), out.size(3))), device=device)
                 for img_idx in range(out.size(0)):
                     for label in range(labels.size(1)):
-                        labels_tensor[img_idx, label, :, :] = labels[img_idx, label]  # fill a square
+                        labels_tensor[img_idx, label, :, :] = labels[img_idx, label]
                 out = torch.cat((out, labels_tensor), 1)
 
-        # run fcs
         out = out.flatten(1, -1)
         for fc_layer in self.fc_layers[:-1]:
 
             out = fc_layer(out)
 
-        out_sigmoid = self.fc_layers.dimg_out(out)  # XAI
+        out_sigmoid = self.fc_layers.dimg_out(out)
         return out, out_sigmoid
 
 
@@ -212,7 +207,7 @@ class Generator(nn.Module):
             label = Label(age, bmi_group).to_tensor() \
                 if (isinstance(age, int) and isinstance(bmi_group, int)) \
                 else torch.cat((age, bmi_group), 1)
-            out = torch.cat((out, label), 1)  # z_l
+            out = torch.cat((out, label), 1)
         out = self.fc(out)
         out = out.view(out.size(0), 1024, 4, 4)
         for i, deconv_layer in enumerate(self.deconv_layers, 1):
@@ -232,7 +227,7 @@ class Net(object):
         self.di_optimizer = Adam(self.Dimg.parameters())
 
         self.device = None
-        self.cpu()  # initial, can later move to cuda
+        self.cpu()
 
     def __call__(self, *args, **kwargs):
         self.test_single(*args, **kwargs)
@@ -241,16 +236,16 @@ class Net(object):
         return os.linesep.join([repr(subnet) for subnet in (self.E, self.Dz, self.G)])
 
     def test_single_internal(self, image_tensor, age, orig_bmi_group, target):
-        batch = image_tensor.repeat(consts.NUM_AGES, 1, 1, 1).to(device=self.device)  # N x D x H x W
-        z = self.E(batch)  # N x Z
+        batch = image_tensor.repeat(consts.NUM_AGES, 1, 1, 1).to(device=self.device)
+        z = self.E(batch)
 
         bmi_group_tensor = -torch.ones(consts.NUM_BMI_GROUPS)
         bmi_group_tensor[int(orig_bmi_group)] *= -1
-        bmi_group_tensor = bmi_group_tensor.repeat(consts.NUM_AGES, consts.NUM_AGES // consts.NUM_BMI_GROUPS)  # apply bmi_group on all images
+        bmi_group_tensor = bmi_group_tensor.repeat(consts.NUM_AGES, consts.NUM_AGES // consts.NUM_BMI_GROUPS)
 
         age_tensor = -torch.ones(consts.NUM_AGES, consts.NUM_AGES)
         for i in range(consts.NUM_AGES):
-            age_tensor[i][i] *= -1  # apply the i'th age group on the i'th image
+            age_tensor[i][i] *= -1
 
         l = torch.cat((age_tensor, bmi_group_tensor), 1).to(self.device)
         z_l = torch.cat((z, l), 1)
@@ -275,20 +270,10 @@ class Net(object):
             )
             image_tensor = two_sided(torch.from_numpy(image_tensor / 255.0)).float().permute(2, 0, 1)
 
-        # joined = torch.cat((image_tensor.unsqueeze(0), generated), 0)
-
         for idx, prediction in enumerate(generated):
             dest = os.path.join(target, f'{idx}.jpg')
             save_image_normalized(tensor=prediction, filename=dest)
             logging.info(f"Saved age progression result to: {os.path.basename(dest)}")
-        # joined = nn.ConstantPad2d(padding=4, value=-1)(joined)
-
-        # for img_idx in (0, Label.age_transform(age) + 1):
-        #     for elem_idx in (0, 1, 2, 3):
-        #         joined[img_idx, :, elem_idx, :] = 1
-        #         joined[img_idx, :, -elem_idx-1, :] = 1
-        #         joined[img_idx, :, :, elem_idx] = 1
-        #         joined[img_idx, :, :, -elem_idx-1] = 1
 
     def test_single(self, image_tensor, image_name, age_group, bmi_group, target):
         self.eval()
@@ -304,7 +289,6 @@ class Net(object):
         self.eg_optimizer.zero_grad()
         self.dz_optimizer.zero_grad()
 
-        # DiscriminatorZ Loss
         d_z_prior = self.Dz(z_prior)
         d_z = self.Dz(z)
 
@@ -315,28 +299,22 @@ class Net(object):
 
         input_output_loss = l1_loss
 
-        # Input\Output Loss
         eg_loss = input_output_loss(generated, images)
         losses['eg'].append(eg_loss.item())
 
-        # Total Variance Regularization Loss
-        reg = l1_loss(generated[:, :, :, :-1], generated[:, :, :, 1:]) + l1_loss(generated[:, :, :-1, :],
-                                                                                 generated[:, :, 1:, :])
+        reg = l1_loss(generated[:, :, :, :-1], generated[:, :, :, 1:]) + l1_loss(generated[:, :, :-1, :], generated[:, :, 1:, :])
 
         reg_loss = 0 * reg
         reg_loss.to(self.device)
         losses['reg'].append(reg_loss.item())
 
-        # Encoder\DiscriminatorZ Loss
         d_z = self.Dz(z)
         ez_loss = 0.0001 * bce_with_logits_loss(d_z, torch.ones_like(d_z))
         ez_loss.to(self.device)
         losses['ez'].append(ez_loss.item())
 
-        # DiscriminatorImg Loss
         d_i_output, d_i_output_sigmoid = self.Dimg(generated, labels, self.device)
 
-        # Generator\DiscriminatorImg Loss
         dg_loss = 0.0001 * bce_with_logits_loss(d_i_output, torch.ones_like(d_i_output))
         losses['dg'].append(dg_loss.item())
 
@@ -396,8 +374,6 @@ class Net(object):
         input_output_loss = l1_loss
         nrow = round((2 * batch_size)**0.5)
 
-        # save_image_normalized(tensor=validate_images, filename=where_to_save+"/base.png")
-
         for optimizer in (self.eg_optimizer, self.dz_optimizer, self.di_optimizer):
             for param in ('weight_decay', 'betas', 'lr'):
                 val = locals()[param]
@@ -422,11 +398,11 @@ class Net(object):
                 paths_for_gif.append(where_to_save_epoch)
                 losses = defaultdict(lambda: [])
 
-                self.train()  # move to train mode
+                self.train()
                 for i, (images, labels) in enumerate(train_loader, 1):
 
                     images = images.to(device=self.device)
-                    labels = torch.stack([str_to_tensor(idx_to_class[l], normalize=True) for l in list(labels.numpy())])  # todo - can remove list() ?
+                    labels = torch.stack([str_to_tensor(idx_to_class[l], normalize=True) for l in list(labels.numpy())])
                     labels = labels.to(device=self.device)
 
                     logging.debug(f"\tIteration: {i} images shape: {str(images.shape)}")
@@ -437,7 +413,6 @@ class Net(object):
 
                     z_prior = two_sided(torch.rand_like(z, device=self.device))
 
-                    # Train Encoder/Generator
                     loss = self.teach_encoder_generator_discriminatorZ(z=z, z_prior=z_prior, generated=generated,
                                                                        images=images, labels=labels, losses=losses,
                                                                        local_explainable=local_explainable,
@@ -446,12 +421,9 @@ class Net(object):
                     loss = loss.detach()
 
 
-                    # Train Discriminator Dimg
                     self.teach_discriminator_img(generated.detach(), images, labels, losses)
 
-                    # this loss is only for debugging
                     uni_diff_loss = (uni_loss(z.cpu().detach()) - uni_loss(z_prior.cpu().detach())) / batch_size
-                    # losses['uni_diff'].append(uni_diff_loss)
 
                     now = datetime.datetime.now()
 
@@ -469,8 +441,8 @@ class Net(object):
                 loss_tracker.save(os.path.join(cp_path, 'losses.png'))
 
 
-                with torch.no_grad():  # validation
-                    self.eval()  # move to eval mode
+                with torch.no_grad():
+                    self.eval()
 
                     for ii, (images, labels) in enumerate(valid_loader, 1):
                         images = images.to(self.device)
@@ -484,8 +456,7 @@ class Net(object):
 
                         loss = input_output_loss(images, generated)
 
-                        joined = merge_images(images, generated)  # torch.cat((generated, images), 0)
-
+                        joined = merge_images(images, generated)
                         file_name = os.path.join(where_to_save_epoch, 'validation.png')
                         save_image_normalized(tensor=joined, filename=file_name, nrow=nrow)
 
@@ -527,9 +498,6 @@ class Net(object):
             explainable=True,
             explanation_type='saliency'):
 
-        if explainable:  #XAI
-            explanationSwitch = (epochs + 1) / 2 if epochs % 2 == 1 else epochs / 2
-
         where_to_save = where_to_save or default_where_to_save()
         dataset = get_dataset(dataset_path)
         valid_size = valid_size or batch_size
@@ -541,8 +509,6 @@ class Net(object):
 
         input_output_loss = l1_loss
         nrow = round((2 * batch_size)**0.5)
-
-        # save_image_normalized(tensor=validate_images, filename=where_to_save+"/base.png")
 
         for optimizer in (self.eg_optimizer, self.dz_optimizer, self.di_optimizer):
             for param in ('weight_decay', 'betas', 'lr'):
@@ -565,29 +531,26 @@ class Net(object):
                 paths_for_gif.append(where_to_save_epoch)
                 losses = defaultdict(lambda: [])
 
-                self.train()  # move to train mode
+                self.train()
                 for i, (images, labels) in enumerate(train_loader, 1):
 
                     images = images.to(device=self.device)
-                    labels = torch.stack([str_to_tensor(idx_to_class[l], normalize=True) for l in list(labels.numpy())])  # todo - can remove list() ?
+                    labels = torch.stack([str_to_tensor(idx_to_class[l], normalize=True) for l in list(labels.numpy())])
                     labels = labels.to(device=self.device)
                     z = self.E(images)
 
-                    # Input\Output Loss
                     z_l = torch.cat((z, labels), 1)
                     generated = self.G(z_l)
                     eg_loss = input_output_loss(generated, images)
                     losses['eg'].append(eg_loss.item())
 
-                    # Total Variance Regularization Loss
                     reg = l1_loss(generated[:, :, :, :-1], generated[:, :, :, 1:]) + l1_loss(generated[:, :, :-1, :], generated[:, :, 1:, :])
 
                     reg_loss = 0 * reg
                     reg_loss.to(self.device)
                     losses['reg'].append(reg_loss.item())
 
-                    # DiscriminatorZ Loss
-                    z_prior = two_sided(torch.rand_like(z, device=self.device))  # [-1 : 1]
+                    z_prior = two_sided(torch.rand_like(z, device=self.device))
                     d_z_prior = self.Dz(z_prior)
                     d_z = self.Dz(z)
 
@@ -597,12 +560,10 @@ class Net(object):
                     losses['dz'].append(dz_loss_tot.item())
 
 
-                    # Encoder\DiscriminatorZ Loss
                     ez_loss = 0.0001 * bce_with_logits_loss(d_z, torch.ones_like(d_z))
                     ez_loss.to(self.device)
                     losses['ez'].append(ez_loss.item())
 
-                    # DiscriminatorImg Loss
                     d_i_input, d_i_input_sigmoid = self.Dimg(images, labels, self.device)
                     d_i_output, d_i_output_sigmoid = self.Dimg(generated.detach(), labels, self.device)
                     di_input_loss = bce_with_logits_loss(d_i_input, torch.ones_like(d_i_input))
@@ -610,48 +571,23 @@ class Net(object):
                     di_loss_tot = (di_input_loss + di_output_loss)
                     losses['di'].append(di_loss_tot.item())
 
-                    # Generator\DiscriminatorImg Loss
                     dg_loss = 0.0001 * bce_with_logits_loss(d_i_output, torch.ones_like(d_i_output))
                     losses['dg'].append(dg_loss.item())
 
-                    # this loss is only for debugging
                     uni_diff_loss = (uni_loss(z.cpu().detach()) - uni_loss(z_prior.cpu().detach())) / batch_size
 
-                    # Start back propagation
-
-                    # Back prop on Encoder\Generator
                     self.eg_optimizer.zero_grad()
                     loss = eg_loss + reg_loss + ez_loss + dg_loss
                     self.dz_optimizer.zero_grad()
                     self.di_optimizer.zero_grad()
 
-                    # Back prop on Encoder\Generator
                     loss.backward(retain_graph=True)
-                    # Back prop on DiscriminatorZ
                     dz_loss_tot.backward(retain_graph=True)
-                    # Back prop on DiscriminatorImg
                     di_loss_tot.backward()
 
                     self.eg_optimizer.step()
                     self.dz_optimizer.step()
                     self.di_optimizer.step()
-
-                    #
-                    # # Back prop on Encoder\Generator
-                    # # self.eg_optimizer.zero_grad()
-                    # # loss = eg_loss + reg_loss + ez_loss + dg_loss
-                    # # loss.backward(retain_graph=True)
-                    # # self.eg_optimizer.step()
-                    #
-                    # # Back prop on DiscriminatorZ
-                    # self.dz_optimizer.zero_grad()
-                    # dz_loss_tot.backward(retain_graph=True)
-                    # self.dz_optimizer.step()
-                    #
-                    # # Back prop on DiscriminatorImg
-                    # self.di_optimizer.zero_grad()
-                    # di_loss_tot.backward()
-                    # self.di_optimizer.step()
 
                     now = datetime.datetime.now()
 
@@ -667,8 +603,8 @@ class Net(object):
                     remove_trained(prev_folder)
                 loss_tracker.save(os.path.join(cp_path, 'losses.png'))
 
-                with torch.no_grad():  # validation
-                    self.eval()  # move to eval mode
+                with torch.no_grad():
+                    self.eval()
 
                     for ii, (images, labels) in enumerate(valid_loader, 1):
                         images = images.to(self.device)
@@ -682,7 +618,7 @@ class Net(object):
 
                         loss = input_output_loss(images, generated)
 
-                        joined = merge_images(images, generated)  # torch.cat((generated, images), 0)
+                        joined = merge_images(images, generated)
 
                         file_name = os.path.join(where_to_save_epoch, 'validation.png')
                         save_image_normalized(tensor=joined, fp=file_name, nrow=nrow)
@@ -711,13 +647,8 @@ class Net(object):
         loss_tracker.plot()
 
     def _mass_fn(self, fn_name, *args, **kwargs):
-        """Apply a function to all possible Net's components.
-
-        :return:
-        """
-
         for class_attr in dir(self):
-            if not class_attr.startswith('_'):  # ignore private members, for example self.__class__
+            if not class_attr.startswith('_'):
                 class_attr = getattr(self, class_attr)
                 if hasattr(class_attr, fn_name):
                     fn = getattr(class_attr, fn_name)
@@ -735,27 +666,14 @@ class Net(object):
         self.device = torch.device('cuda')
 
     def eval(self):
-        """Move Net to evaluation mode.
-
-        :return:
-        """
         self._mass_fn('eval')
 
     def train(self):
-        """Move Net to training mode.
-
-        :return:
-        """
         self._mass_fn('train')
 
     def save(self, path, to_save_models=True):
-        """Save all state dicts of Net's components.
-
-        :return:
-        """
         if not os.path.isdir(path):
             os.mkdir(path)
-        # path = os.path.join(path, datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
         if not os.path.isdir(path):
             os.mkdir(path)
 
@@ -777,10 +695,6 @@ class Net(object):
         return path
 
     def load(self, path, slim=True):
-        """Load all state dicts of Net's components.
-
-        :return:
-        """
         loaded = []
         for class_attr_name in dir(self):
             if (not class_attr_name.startswith('_')) and ((not slim) or (class_attr_name in ('E', 'G'))):

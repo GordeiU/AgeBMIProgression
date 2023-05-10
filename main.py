@@ -141,14 +141,6 @@ if __name__ == '__main__':
         if not os.path.isdir(results_dest):
             os.makedirs(results_dest)
 
-        # args.input = os.path.join(args.input, str(args.age) + '.' + str(args.bmi_group))
-
-        # for x in range(0, consts.NUM_AGES):
-        #     if not os.path.exists(os.path.join(results_dest, str(args.age) + '.' + str(args.bmi_group) + '_to_' + str(x) + '.' + str(args.bmi_group))):
-        #         os.makedirs(os.path.join(results_dest, str(args.age) + '.' + str(args.bmi_group) + '_to_' + str(x) + '.' + str(args.bmi_group)))
-        # if not os.path.exists(os.path.join(results_dest, str(args.age) + '.' + str(args.bmi_group) + '_to_all')):
-        #     os.makedirs(os.path.join(results_dest,str(args.age) + '.' + str(args.bmi_group) + '_to_all'))
-
         image_tensor = pil_to_model_tensor_transform(pil_loader(os.path.join(args.image))).to(net.device)
         net.test_single(
             image_tensor=image_tensor,

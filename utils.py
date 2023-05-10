@@ -115,7 +115,7 @@ class Label(namedtuple('Label', ('age_group', 'bmi_group'))):
     def to_str(self):
         return '%d.%d' % (self.age_group, self.bmi_group)
 
-    @staticmethod  #TODO: Modify to fit my needs
+    @staticmethod
     def age_transform(age):
         if age < 20: raise ValueError(f"Age ({age}) is too small for the model.")
         if 20 <= age and age < 25:
@@ -153,7 +153,6 @@ def print_timestamp(s):
 
 class LossTracker(object):
     def __init__(self, use_heuristics=False, plot=False, eps=1e-3):
-        # assert 'train' in names and 'valid' in names, str(names)
         self.losses = defaultdict(lambda: [])
         self.paths = []
         self.epochs = 0
